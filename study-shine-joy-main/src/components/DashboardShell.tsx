@@ -19,8 +19,9 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import type { Role } from "@/lib/lms-data";
-import { roleMeta } from "@/lib/lms-data";
+import { type Role, roleMeta } from "@/lib/lms-data";
+import { api } from "@/lib/api";
+import { useState } from "react";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -33,6 +34,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { to: "performance", label: "Performance", icon: BarChart3 },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
     { to: "notifications", label: "Notifications", icon: Bell },
+    { to: "library", label: "Library", icon: BookOpen },
     { to: "profile", label: "Profile", icon: User },
   ],
   faculty: [
@@ -44,6 +46,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { to: "submissions", label: "Submissions", icon: FileQuestion },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
     { to: "announcements", label: "Announcements", icon: Megaphone },
+    { to: "library", label: "Library", icon: BookOpen },
     { to: "profile", label: "Profile", icon: User },
   ],
   admin: [
@@ -51,6 +54,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { to: "users", label: "Users", icon: Users },
     { to: "courses", label: "Course approvals", icon: ShieldCheck },
     { to: "announcements", label: "Announcements", icon: Megaphone },
+    { to: "library", label: "Library", icon: BookOpen },
     { to: "reports", label: "Reports", icon: LineChart },
   ],
 };
@@ -60,11 +64,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
   const items = navByRole[role] ?? navByRole.student;
   const meta = roleMeta[role] ?? roleMeta.student;
 
   const basePath = `/dashboard/${role}`;
   const currentSub = location.pathname.replace(basePath, "").replace(/^\//, "") || "";
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      const res = await api.getUnreadNotificationsCount();
+      if (res.success && res.data) {
+        setUnreadCount(res.data.count);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   // Prevent accessing dashboards not intended for their actual DB role
   useEffect(() => {
@@ -132,18 +150,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="font-display text-lg font-bold">{meta.tagline}</div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative rounded-full border border-border bg-card p-2 transition hover:bg-secondary">
+            <Link
+              to="/dashboard/$role/$section"
+              params={{ role, section: "notifications" }}
+              className="relative rounded-full border border-border bg-card p-2 transition hover:bg-secondary"
+            >
               <Bell className="h-4 w-4" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
-            </button>
-            <div className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1">
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent animate-pulse" />
+              )}
+            </Link>
+            <Link
+              to="/dashboard/$role/$section"
+              params={{ role, section: "profile" }}
+              className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1 transition hover:bg-secondary"
+            >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
                 {user?.name?.[0]?.toUpperCase() || meta.label[0]}
               </div>
               <span className="hidden text-sm font-medium sm:inline">
                 {user?.name || meta.label}
               </span>
-            </div>
+            </Link>
           </div>
         </header>
 

@@ -1,71 +1,55 @@
-# Lumen LMS — Learning, Beautifully Organized
+# Lumen LMS (Study Shine Joy)
 
-Lumen LMS is a modern, distraction-free Learning Management System designed for students, faculty, and administrators. It features a clean, pastel-themed interface, robust role-based access control, and a secure, verified workflow for course management.
-
----
+Lumen LMS is a modern, full-stack Learning Management System designed for a calm and focused experience. It provides specialized dashboards for Students, Faculty, and Administrators to manage courses, assignments, and performance.
 
 ## 🌟 Key Features
 
-### 🔐 Security & Access Control
-- **Two-Step Verification (OTP)**: All new Student and Faculty accounts require email verification via a 6-digit OTP before they can access the platform.
-- **Strong Password Enforcement**: Strict criteria (8+ characters, uppercase, lowercase, numbers, and special symbols) to protect user accounts.
-- **Role-Based Permissions**: Distinct dashboards and capabilities for Students, Faculty, and Admins.
-- **Course Status Enforcement**: Only **APPROVED** courses can host content, assignments, quizzes, or attendance records.
+- **Multi-Role Dashboards**: Custom interfaces for Students (learning), Faculty (teaching), and Admins (management).
+- **Automated Notifications**: Real-time alerts for course approvals, graded assignments, and new content.
+- **Course Approval Workflow**: Faculty submit courses for Admin review to maintain quality.
+- **Assignment & Quiz System**: Submit PDF assignments, take quizzes, and receive instant feedback.
+- **Email OTP Verification**: Secure signup process requiring email verification.
+- **Attendance & Performance**: Visual tracking of student progress and engagement.
 
-### 👩‍🏫 Faculty Workflow
-- **Course Creation**: Create courses and wait for Admin approval.
-- **Content Management**: Upload YouTube videos and learning resources once a course is approved.
-- **Assessment**: Create assignments (with AI-generated prompts) and AI-powered quizzes.
-- **Grading**: Review student submissions, provide feedback, and assign marks.
-- **Attendance**: Mark daily attendance for students enrolled in their courses.
+## 🏗️ Architecture
 
-### 👨‍🎓 Student Experience
-- **Course Exploration**: Browse the catalog of approved courses and enroll instantly.
-- **Learning Path**: Access structured course content, submit assignments, and take quizzes.
-- **Performance Tracking**: View marks, feedback, and attendance trends through a visual dashboard.
-- **Notifications**: Stay updated with announcements from faculty and admins.
-
-### 🛡️ Admin Oversight
-- **Quality Control**: Review and Approve/Reject pending courses created by faculty.
-- **User Management**: Activate/Deactivate users and oversee the platform's community.
-- **Analytics**: View system-wide stats, enrollment trends, and performance reports.
-- **Global Announcements**: Send notifications to all users or specific roles.
-
----
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React (TypeScript), TanStack Router, TanStack Query, Framer Motion (Animations), Tailwind CSS, Lucide React (Icons), Recharts (Analytics).
-- **Backend**: Node.js, Express, Sequelize (ORM), JWT (Authentication), Bcrypt (Security).
-- **Database**: SQLite (Development-ready, persistent storage).
-
----
+The project is split into two main parts:
+- **Backend**: Node.js & Express API with Sequelize ORM and PostgreSQL/SQLite database.
+- **Frontend**: React & Vite with TanStack Router and Lucide icons.
 
 ## 🚀 Getting Started
 
-### 1. Database Setup
-The system uses SQLite. On initial startup, it automatically creates the database file (`lms_db.sqlite`) and seeds it with default demo credentials.
+### Prerequisites
+- Node.js (v18+)
+- PostgreSQL (or SQLite for development)
 
-### 2. Default Credentials
-- **Admin**: `admin@example.com` / `password123`
-- **Faculty**: `faculty@example.com` / `password123`
-- **Student**: `student@example.com` / `password123`
+### Quick Setup
 
-### 3. Workflow Example
-1. **Faculty** signs up and verifies via OTP.
-2. **Faculty** creates a "Modern Web Design" course.
-3. **Admin** logs in, reviews the course, and clicks **Approve**.
-4. **Student** signs up, verifies, and enrolls in the approved course.
-5. **Faculty** now uploads a video link and creates an assignment.
-6. **Student** completes the task and submits it for grading.
+1. **Clone the repository**:
+   ```bash
+   git clone <repo-url>
+   cd study-shine-joy-main
+   ```
+
+2. **Backend Setup**:
+   ```bash
+   cd lms-backend
+   npm install
+   # Configure .env with your DB and Email credentials
+   npm start
+   ```
+
+3. **Frontend Setup**:
+   ```bash
+   cd ../study-shine-joy-main
+   npm install
+   npm run dev
+   ```
+
+## 📄 Documentation
+
+- [Backend Documentation](file:///c:/study-shine-joy-main/lms-backend/README.md)
+- [Frontend Documentation](file:///c:/study-shine-joy-main/study-shine-joy-main/README.md)
 
 ---
-
-## 🧹 Database Reset
-To start with a completely fresh state:
-1. Stop the backend server.
-2. Delete the `lms-backend/lms_db.sqlite` file.
-3. Restart the backend. The default demo accounts will be recreated automatically.
-
----
-*Lumen LMS · Crafted for calm and secure learning.*
+© 2026 Lumen LMS · Crafted for calm learning.

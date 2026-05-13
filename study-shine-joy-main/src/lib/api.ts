@@ -28,6 +28,7 @@ export interface Course {
   studentCount?: number;
   progress?: number;
   rejectionReason?: string;
+  completedContentIds?: number[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -102,6 +103,28 @@ export interface Announcement {
   audience?: string;
 }
 
+export interface Notification {
+  id: number;
+  userId: number;
+  title: string;
+  message: string;
+  type: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface Resource {
+  id: number;
+  title: string;
+  description?: string;
+  type: "PDF" | "VIDEO" | "LINK" | "DOC";
+  url: string;
+  facultyId?: number;
+  courseId?: number;
+  category?: string;
+  createdAt?: string;
+}
+
 export interface PerformanceRecord {
   subject: string;
   marks: number;
@@ -115,7 +138,13 @@ export interface AdminUser {
   active: boolean;
   createdAt?: string;
   status?: string;
+  bio?: string;
+  profilePicture?: string;
+  skills?: string[];
+  socialLinks?: Record<string, string>;
 }
+
+export interface UserProfile extends AdminUser {}
 
 export interface AdminStats {
   totalUsers: number;
@@ -128,10 +157,11 @@ export interface AdminStats {
 }
 
 class ApiClient {
-  private baseUrl: string;
+  public API_BASE_URL: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+    this.API_BASE_URL = baseUrl;
   }
 
   private getAuthToken(): string | null {
@@ -363,12 +393,12 @@ class ApiClient {
   }
 
   async getSubmissions(assignmentId?: string) {
-    const endpoint = assignmentId ? `/assignments/${assignmentId}/submissions` : "/submissions";
+    const endpoint = assignmentId ? `/assignments/${assignmentId}/submissions` : "/assignments/submissions";
     return this.request(endpoint, { method: "GET" });
   }
 
   async gradeSubmission(submissionId: string, marks: number, feedback: string) {
-    return this.request(`/submissions/${submissionId}/grade`, {
+    return this.request(`/assignments/submissions/${submissionId}/grade`, {
       method: "PUT",
       body: JSON.stringify({ marks, feedback }),
     });
@@ -428,6 +458,39 @@ class ApiClient {
     });
   }
 
+  // NOTIFICATION ENDPOINTS
+  async getNotifications() {
+    return this.request<Notification[]>("/notifications", { method: "GET" });
+  }
+
+  async markNotificationAsRead(id: number) {
+    return this.request(`/notifications/${id}/mark-read`, { method: "PUT" });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request("/notifications/mark-all-read", { method: "PUT" });
+  }
+
+  async getUnreadNotificationsCount() {
+    return this.request<{ count: number }>("/notifications/unread-count", { method: "GET" });
+  }
+
+  // RESOURCE ENDPOINTS
+  async getResources() {
+    return this.request<Resource[]>("/resources", { method: "GET" });
+  }
+
+  async createResource(data: Partial<Resource>) {
+    return this.request<Resource>("/resources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteResource(id: number) {
+    return this.request(`/resources/${id}`, { method: "DELETE" });
+  }
+
   // PERFORMANCE ENDPOINTS
   async getPerformance() {
     return this.request("/performance", { method: "GET" });
@@ -462,12 +525,34 @@ class ApiClient {
     });
   }
 
+  async uploadCourseContent(courseId: string, formData: FormData) {
+    return this.requestFormData(`/courses/${courseId}/content/upload`, formData);
+  }
+
+  async markContentComplete(courseId: string, contentId: string) {
+    return this.request<{ message: string; course: Course }>(`/courses/${courseId}/content/${contentId}/complete`, {
+      method: "POST",
+    });
+  }
+
   async getCourseStudents(courseId: string) {
     return this.request(`/courses/${courseId}/students`, { method: "GET" });
   }
 
   async getEnrollmentTrend() {
     return this.request("/admin/enrollment-trend", { method: "GET" });
+  }
+
+  // PROFILE ENDPOINTS
+  async getUserProfile() {
+    return this.request<UserProfile>("/users/profile", { method: "GET" });
+  }
+
+  async updateProfile(data: Partial<UserProfile>) {
+    return this.request<{ message: string; user: UserProfile }>("/users/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
   // Public request method for custom endpoints

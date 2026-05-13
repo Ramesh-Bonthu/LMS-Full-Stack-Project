@@ -24,6 +24,7 @@ export interface AuthContextType {
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>;
   resendOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -152,6 +153,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (data: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...data };
+      localStorage.setItem("user", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -163,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyOtp,
         resendOtp,
         logout,
+        updateUser,
       }}
     >
       {children}
