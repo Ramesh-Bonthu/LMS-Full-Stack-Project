@@ -7,9 +7,15 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Health Check
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:8080", "http://localhost:8082"],
+    origin: process.env.FRONTEND_URL || "*",
     credentials: true,
   })
 );

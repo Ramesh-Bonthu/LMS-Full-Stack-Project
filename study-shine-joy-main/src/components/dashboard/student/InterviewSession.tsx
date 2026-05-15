@@ -289,32 +289,102 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
             </div>
           )}
 
-          {/* AI Overlay / Avatar */}
-          <div className="absolute top-4 right-4 w-48 aspect-video bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl">
+          {/* AI Overlay / Avatar - The "AI Man" */}
+          <div className="absolute top-4 right-4 w-48 aspect-video bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-50" />
+            
             <AnimatePresence mode="wait">
-              {isSpeaking ? (
+              {isProcessing ? (
                 <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  className="flex gap-1"
+                  key="thinking"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="relative"
                 >
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ height: [10, 30, 10] }}
-                      transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
-                      className="w-1.5 bg-primary rounded-full"
+                  <div className="w-16 h-16 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+                  </div>
+                </motion.div>
+              ) : isSpeaking ? (
+                <motion.div 
+                  key="speaking"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <div className="flex gap-1 items-end h-12">
+                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ 
+                          height: [15, Math.random() * 40 + 20, 15],
+                          backgroundColor: ["#3b82f6", "#60a5fa", "#3b82f6"]
+                        }}
+                        transition={{ 
+                          duration: 0.4, 
+                          repeat: Infinity, 
+                          delay: i * 0.05,
+                          ease: "easeInOut"
+                        }}
+                        className="w-1.5 bg-primary rounded-full shadow-lg shadow-primary/40"
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] animate-pulse">AI Speaking</span>
+                </motion.div>
+              ) : isListening ? (
+                <motion.div 
+                  key="listening"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <div className="relative">
+                    <motion.div 
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.4, 0.2] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="absolute -inset-6 bg-green-500/20 rounded-full blur-2xl"
                     />
-                  ))}
+                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center border-2 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)] relative">
+                      <Mic className="w-8 h-8 text-green-500 animate-pulse" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-[0.2em]">Listening to You</span>
                 </motion.div>
               ) : (
-                <Bot className="w-12 h-12 text-primary opacity-50" />
+                <motion.div 
+                  key="idle"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <div className="relative">
+                    <motion.div 
+                      animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                      className="absolute -inset-4 bg-primary/20 rounded-full blur-xl"
+                    />
+                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center border border-white/10 shadow-inner relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent" />
+                      <User className="w-8 h-8 text-primary/50" />
+                      <motion.div 
+                         animate={{ opacity: [0.4, 1, 0.4] }}
+                         transition={{ duration: 2, repeat: Infinity }}
+                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                      />
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">AI Waiting</span>
+                </motion.div>
               )}
             </AnimatePresence>
+
             <div className="absolute bottom-2 left-2 flex items-center gap-2">
-               <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-               <span className="text-[10px] font-bold text-white/70 uppercase">Interviewer AI</span>
+               <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,1)]" />
+               <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Digital Interviewer</span>
             </div>
           </div>
 
