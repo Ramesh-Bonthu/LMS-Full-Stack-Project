@@ -17,6 +17,7 @@ import {
   Megaphone,
   LineChart,
   LogOut,
+  Bot
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { type Role, roleMeta } from "@/lib/lms-data";
@@ -33,6 +34,8 @@ const navByRole: Record<Role, NavItem[]> = {
     { to: "quizzes", label: "Quizzes", icon: FileQuestion },
     { to: "performance", label: "Performance", icon: BarChart3 },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
+    { to: "mock-interviews", label: "Mock Interviews", icon: Bot },
+
     { to: "notifications", label: "Notifications", icon: Bell },
     { to: "library", label: "Library", icon: BookOpen },
     { to: "profile", label: "Profile", icon: User },

@@ -1,55 +1,50 @@
-# Lumen LMS Backend
+# Study Shine Joy - Backend API
 
-This is the Node.js/Express backend for the Lumen LMS platform. It provides a secure API for managing users, courses, assignments, and notifications.
+This is the core engine of the LMS, providing secure, scalable API endpoints and AI integrations.
 
-## 🛠️ Technology Stack
+## 🔐 Authentication & Security
+*   **JWT Authentication**: All sensitive routes are protected by JSON Web Tokens.
+*   **Role-Based Access (RBAC)**: Specific endpoints restricted to ADMIN, FACULTY, or STUDENT roles.
+*   **OTP Verification**: Email-based One-Time Password verification for new user signups.
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **ORM**: Sequelize
-- **Database**: PostgreSQL (Production) / SQLite (Development)
-- **Authentication**: JWT (JSON Web Tokens) & Bcryptjs
-- **Mailing**: Nodemailer (Email OTP)
-- **File Handling**: Multer
+## 📡 Core API Modules
 
-## 📡 API Functionalities
+### `/api/auth`
+*   `POST /register`: User registration with email verification trigger.
+*   `POST /verify-otp`: Secure OTP verification.
+*   `POST /login`: Secure authentication and token generation.
 
-### Authentication
-- `POST /api/auth/register`: Signup with Email OTP generation.
-- `POST /api/auth/verify-otp`: Account verification.
-- `POST /api/auth/login`: Secure login with JWT.
+### `/api/mock-interviews` (AI Powered)
+*   `POST /start`: Initiates AI session (supports multipart/form-data for resumes).
+*   `POST /chat`: Real-time conversational endpoint with history tracking.
+*   `POST /:id/end`: Triggers AI feedback generation and scoring.
 
-### Course Management
-- `GET /api/courses`: Fetch available/enrolled courses.
-- `POST /api/courses`: Faculty creates a course (starts as PENDING).
-- `POST /api/courses/:id/approve`: Admin approves a course.
-- `POST /api/courses/:id/content`: Add units, videos, or PDFs.
+### `/api/quizzes`
+*   `POST /generate`: AI-powered MCQ generation (requires topic and count).
+*   `POST /submit`: Score calculation and attempt recording.
 
-### Assignments & Submissions
-- `POST /api/assignments`: Create course assignments.
-- `POST /api/assignments/:id/submit`: Student uploads PDF submission.
-- `PUT /api/assignments/submissions/:id/grade`: Faculty grades and provides feedback.
+### `/api/courses` & `/api/assignments`
+*   Full CRUD operations for course content and assignment submissions.
+*   Handles PDF uploads and static resource management.
 
-### Notification System
-- **Automated Alerts**: Triggers on course status changes, new assignments, and grading.
-- **Unread Tracking**: `GET /api/notifications/unread-count` for dynamic UI icons.
+## 🗄️ Database Schema (PostgreSQL)
+*   `Users`: Authentication and profile data.
+*   `Courses`: Metadata and enrollment tracking.
+*   `MockInterviews`: Transcript and feedback storage.
+*   `Quizzes`: AI-generated and manual assessments.
+*   `Attendance`: Student engagement tracking.
 
-## 📧 Email OTP Flow
+## ⚙️ Environment Variables (.env)
+Required keys:
+*   `PORT`: Server port (default 8082).
+*   `DB_NAME`, `DB_USER`, `DB_PASSWORD`: PostgreSQL credentials.
+*   `JWT_SECRET`: Security salt for tokens.
+*   `GROQ_API_KEY`: Key for Llama 3.1 AI features.
+*   `EMAIL_USER`, `EMAIL_PASS`: SMTP credentials for OTP emails.
 
-1. User registers -> Backend generates 6-digit code.
-2. `nodemailer` sends email via configured SMTP (Gmail App Password).
-3. User enters code -> `isVerified` set to `true`.
-
-## ⚙️ Configuration
-
-Ensure your [`.env`](file:///c:/study-shine-joy-main/lms-backend/.env) file is configured:
-```env
-PORT=8082
-DB_NAME=lms_db
-JWT_SECRET=your_secret
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
+## 🛠️ Development
+To start the server in development mode:
+```bash
+node server.js
 ```
-
----
-Lumen LMS Backend · Built for reliability.
+The database will automatically sync on startup using Sequelize.

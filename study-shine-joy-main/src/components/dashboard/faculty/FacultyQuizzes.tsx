@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 export function FacultyQuizzes() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [topic, setTopic] = useState("");
+  const [numQuestions, setNumQuestions] = useState(5);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [loading, setLoading] = useState(false);
   const [generatedQuiz, setGeneratedQuiz] = useState<any>(null);
@@ -24,7 +25,7 @@ export function FacultyQuizzes() {
     if (!topic || !selectedCourseId) return alert("Select course and topic");
     setLoading(true);
     try {
-      const res = await api.generateQuiz(topic);
+      const res = await api.generateQuiz(topic, numQuestions);
       if (res.success && res.data) {
         setGeneratedQuiz(res.data);
       } else {
@@ -83,6 +84,15 @@ export function FacultyQuizzes() {
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Topic (e.g. 'React Hooks')"
               className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+            />
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={numQuestions}
+              onChange={(e) => setNumQuestions(Number(e.target.value))}
+              placeholder="Count"
+              className="w-24 rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
             />
             <Btn onClick={handleGenerate} disabled={loading || !topic}>
               <Sparkles className="h-4 w-4" />

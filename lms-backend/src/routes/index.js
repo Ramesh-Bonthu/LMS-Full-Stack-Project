@@ -12,6 +12,8 @@ const miscRoutes = require("./miscRoutes");
 const userRoutes = require("./userRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const resourceRoutes = require("./resourceRoutes");
+const mockInterviewRoutes = require("./mockInterviewRoutes");
+
 
 router.use("/auth", authRoutes);
 router.use("/courses", courseRoutes);
@@ -23,6 +25,8 @@ router.use("/admin", adminRoutes);
 router.use("/users", userRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/resources", resourceRoutes);
+router.use("/mock-interviews", mockInterviewRoutes);
+
 router.use("/", miscRoutes);
 
 module.exports = router;

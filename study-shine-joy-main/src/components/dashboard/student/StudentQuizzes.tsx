@@ -49,7 +49,7 @@ export function StudentQuizzes() {
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <CheckCircle2 className="mb-4 h-16 w-16 text-success" />
         <h2 className="font-display text-2xl font-bold">Quiz Submitted!</h2>
-        <p className="mt-2 text-muted-foreground">You scored {result.percentage}% ({result.marks} marks)</p>
+        <p className="mt-2 text-muted-foreground">You scored {result.percentage}% ({result.marks} out of {result.totalMarks || 20} marks)</p>
         <Btn className="mt-8" onClick={() => { setResult(null); setActiveQuiz(null); setAnswers({}); }}>
           Back to Quizzes
         </Btn>

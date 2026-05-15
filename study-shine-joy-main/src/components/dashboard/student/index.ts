@@ -4,3 +4,5 @@ export * from "./StudentAssignments";
 export * from "./StudentQuizzes";
 export * from "./StudentPerformance";
 export * from "./StudentAttendance";
+export * from "./MockInterviews";
+

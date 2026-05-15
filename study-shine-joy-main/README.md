@@ -1,49 +1,43 @@
-# Lumen LMS Frontend
+# Study Shine Joy - Frontend Application
 
-The React-based frontend for Lumen LMS, built with a focus on aesthetics, responsiveness, and user experience.
+A high-performance, responsive React application that provides a premium user experience for students and educators.
 
-## 🎨 Design Philosophy
+## 🎨 UI/UX Philosophy
+*   **Modern Aesthetics**: Dark-mode support, vibrant gradients, and glassmorphism.
+*   **Interactive Components**: Powered by Framer Motion for smooth transitions and Lucide for sharp iconography.
+*   **Mobile First**: Fully responsive layout using Tailwind CSS grid and flexbox systems.
 
-- **Soft UI**: Clean, light aesthetics with subtle shadows and gradients.
-- **Dynamic Interaction**: Real-time progress tracking and reactive notifications.
-- **Role-Based Views**: Tailored experiences for Students, Faculty, and Admins.
+## 🧱 Key Components
 
-## 🛠️ Technology Stack
+### Dashboard Shell
+A centralized navigation system that dynamically adapts the sidebar and top navigation based on the user's role (Admin, Faculty, or Student).
 
-- **Framework**: React 18+ (Vite)
-- **Routing**: TanStack Router (Type-safe routing)
-- **Styling**: TailwindCSS & Vanilla CSS
-- **Icons**: Lucide React
-- **Animations**: Framer Motion
-- **Data Fetching**: Axios / Fetch API
+### AI Interview Room
+*   **Live Stream**: Real-time camera feed integration.
+*   **Speech Core**: Implements the Web Speech API for low-latency voice-to-text and text-to-speech.
+*   **Visual Feedback**: Animated waves and speaking indicators.
 
-## 📂 Core Components
+### Quiz Interface
+A clean, timed assessment environment with real-time score calculation and instant feedback.
 
-- **`DashboardShell.tsx`**: The main layout container with sidebar and dynamic notification bell.
-- **`DisplayCards.tsx`**: Reusable cards for Courses, Assignments, and Stats.
-- **`UIPrimitives.tsx`**: Custom buttons, pills, and card components.
+## ⚙️ Core Logic
 
-## 🚀 Dashboard Features
+### API Client (`/src/lib/api.ts`)
+A centralized Axios-like wrapper that handles:
+*   Automatic `Authorization` header injection.
+*   Multipart/FormData requests for file uploads.
+*   Standardized error handling and toast notifications.
 
-### Student
-- **Home**: Welcome message, enrolled courses, and upcoming deadlines.
-- **Courses**: Interactive course content player (YouTube, Videos, PDFs).
-- **Assignments**: Upload system with status tracking.
+### State Management
+Uses React's native `useState` and `useEffect` combined with the centralized API client to manage live data across dashboards without unnecessary complexity.
 
-### Faculty
-- **Course Builder**: Create and manage course content and status.
-- **Submission Portal**: View student PDFs and provide grades/feedback.
-- **Analytics**: Track student enrollment and performance.
-
-### Admin
-- **Approvals**: Review and approve/reject new course requests.
-- **User Management**: Monitor and manage all platform users.
-
-## 🔧 Setup
-
+## 🚀 Getting Started
 1. Install dependencies: `npm install`
-2. Run development server: `npm run dev`
+2. Start dev server: `npm run dev`
 3. Build for production: `npm run build`
 
----
-Lumen LMS Frontend · Designed for learning.
+## 📂 Project Structure
+*   `/src/components/dashboard`: Role-specific dashboard views.
+*   `/src/components/shared`: Reusable UI primitives (Buttons, Cards, Modals).
+*   `/src/lib`: Core utility functions and API service.
+*   `/src/styles`: Global CSS and theme configuration.

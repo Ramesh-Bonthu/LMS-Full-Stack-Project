@@ -1,44 +1,57 @@
-const { Quiz, QuizAttempt, Course } = require("../models");
+const { Quiz, QuizAttempt, Course, Notification } = require("../models");
 const { Op } = require("sequelize");
+const Groq = require("groq-sdk");
+
+let groq;
+const getGroq = () => {
+  if (!groq && process.env.GROQ_API_KEY) {
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return groq;
+};
 
 exports.generateQuizQuestions = async (req, res) => {
-  const { topic } = req.body;
+  const { topic, count = 5 } = req.body;
   if (!topic) return res.status(400).json({ message: "Topic is required" });
   
-  const questions = [
-    {
-      question: `What is the primary purpose of ${topic}?`,
-      options: [
-        `To handle user interfaces efficiently.`,
-        `To perform server-side database migrations.`,
-        `To act as a generic data structure.`,
-        `To compile native mobile apps.`
-      ],
+  const groqClient = getGroq();
+  if (!groqClient) {
+    // Fallback to simple generator if no API key
+    const questions = Array.from({ length: count }).map((_, i) => ({
+      question: `Sample question ${i + 1} about ${topic}?`,
+      options: ["Option A", "Option B", "Option C", "Option D"],
       correctIndex: 0
-    },
-    {
-      question: `Which of the following is a key feature of ${topic}?`,
-      options: [
-        `Memory leaks`,
-        `Rapid execution speed`,
-        `Blocking I/O operations`,
-        `Garbage accumulation`
-      ],
-      correctIndex: 1
-    },
-    {
-      question: `When should you ideally use ${topic}?`,
-      options: [
-        `When performance is not a priority.`,
-        `When building scalable and maintainable systems.`,
-        `Only for local small scripts.`,
-        `Whenever documentation is missing.`
-      ],
-      correctIndex: 1
-    }
-  ];
+    }));
+    return res.json({ title: `${topic} Assessment`, questions });
+  }
 
-  return res.json({ title: `${topic} Assessment`, questions });
+  try {
+    const prompt = `Generate a technical quiz about "${topic}". 
+    Create exactly ${count} multiple-choice questions.
+    Return ONLY a raw JSON object with this structure:
+    {
+      "title": "${topic} Quiz",
+      "questions": [
+        {
+          "question": "The question text",
+          "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+          "correctIndex": 0
+        }
+      ]
+    }`;
+
+    const completion = await groqClient.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.1-8b-instant",
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(completion.choices[0].message.content);
+    return res.json(result);
+  } catch (error) {
+    console.error("AI Quiz Generation Error:", error);
+    return res.status(500).json({ message: "Failed to generate AI quiz", error: error.message });
+  }
 };
 
 exports.getAllQuizzes = async (req, res) => {
@@ -93,6 +106,8 @@ exports.createQuiz = async (req, res) => {
         title: "New Quiz Available 🧠",
         message: `A new quiz "${quiz.title}" has been created for ${course.title}. Good luck!`,
         type: "INFO",
+        isRead: false,
+        createdAt: new Date()
       }));
       await Notification.bulkCreate(notifications);
     }
@@ -139,10 +154,14 @@ exports.submitQuiz = async (req, res) => {
     quizId: quiz.id,
     studentId: req.user.userId,
     answers,
-    marks,
+    marks: Math.round(marks),
     submittedAt: new Date(),
   });
 
   const percent = Math.round((marks / totalMarks) * 100);
-  return res.status(201).json({ ...attempt.toJSON(), percentage: percent });
+  return res.status(201).json({ 
+    ...attempt.toJSON(), 
+    percentage: percent,
+    totalMarks: totalMarks
+  });
 };

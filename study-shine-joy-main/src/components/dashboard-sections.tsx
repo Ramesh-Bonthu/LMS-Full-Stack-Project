@@ -12,7 +12,8 @@ import {
   StudentAssignments, 
   StudentQuizzes, 
   StudentPerformance, 
-  StudentAttendance 
+  StudentAttendance,
+  MockInterviews
 } from "./dashboard/student";
 
 // Faculty Components
@@ -61,6 +62,8 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
       case "quizzes": return <StudentQuizzes />;
       case "performance": return <StudentPerformance />;
       case "attendance": return <StudentAttendance />;
+      case "mock-interviews": return <MockInterviews />;
+
       default: return <StudentHome />;
     }
   }

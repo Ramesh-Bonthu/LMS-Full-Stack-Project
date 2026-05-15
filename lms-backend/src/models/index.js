@@ -24,6 +24,8 @@ const AttendanceRecord = require("./AttendanceRecord")(sequelize);
 const CourseContent = require("./CourseContent")(sequelize);
 const Notification = require("./Notification")(sequelize);
 const Resource = require("./Resource")(sequelize);
+const MockInterview = require("./MockInterview")(sequelize);
+
 
 // Associations
 Course.hasMany(CourseContent, { foreignKey: "courseId", as: "contents" });
@@ -42,4 +44,5 @@ module.exports = {
   CourseContent,
   Notification,
   Resource,
+  MockInterview,
 };

@@ -405,10 +405,10 @@ class ApiClient {
   }
 
   // QUIZ ENDPOINTS
-  async generateQuiz(topic: string) {
-    return this.request("/quizzes/generate", {
+  async generateQuiz(topic: string, count: number = 5) {
+    return this.request<{ title: string; questions: Question[] }>("/quizzes/generate", {
       method: "POST",
-      body: JSON.stringify({ topic }),
+      body: JSON.stringify({ topic, count }),
     });
   }
 
@@ -558,6 +558,10 @@ class ApiClient {
   // Public request method for custom endpoints
   async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, options);
+  }
+
+  async makeFormDataRequest<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    return this.requestFormData<T>(endpoint, formData);
   }
 }
 
