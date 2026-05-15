@@ -1,0 +1,8 @@
+[build]
+  command = "cd study-shine-joy-main && npm run build"
+  publish = "study-shine-joy-main/dist/client"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
