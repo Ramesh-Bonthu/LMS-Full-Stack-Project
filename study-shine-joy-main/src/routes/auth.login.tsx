@@ -60,7 +60,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div suppressHydrationWarning className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
