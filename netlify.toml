@@ -1,6 +1,7 @@
 [build]
-  command = "cd study-shine-joy-main && npm run build"
-  publish = "study-shine-joy-main/dist/client"
+  base = "study-shine-joy-main"
+  command = "npm run build"
+  publish = "dist/client"
 
 [[redirects]]
   from = "/*"
