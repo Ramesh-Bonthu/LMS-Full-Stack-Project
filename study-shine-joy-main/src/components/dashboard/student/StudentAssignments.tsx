@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Loader, ArrowLeft, Upload, CheckCircle2 } from "lucide-react";
-import { type Assignment, api } from "@/lib/api";
+import { Loader, ArrowLeft, Upload, CheckCircle2, FileText, Download } from "lucide-react";
+import { type Assignment, api, API_BASE_URL } from "@/lib/api";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
 import { DynamicAssignmentTable } from "../../shared/DisplayCards";
 
@@ -158,9 +158,30 @@ function AssignmentDetailView({ assignment, onBack }: { assignment: Assignment; 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <h3 className="mb-4 font-display text-lg font-bold text-primary">Instructions</h3>
-          <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
+          <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap mb-4">
             {assignment.description || "No instructions provided."}
           </div>
+
+          {/* Question Paper PDF Download Card */}
+          {assignment.pdfUrl && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between mt-4">
+              <div className="flex items-center gap-3">
+                <FileText className="h-6 w-6 text-emerald-500 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Assignment Question Paper PDF</div>
+                  <div className="text-xs text-muted-foreground">Official Questions Document</div>
+                </div>
+              </div>
+              <a
+                href={`${API_BASE_URL.replace("/api", "")}${assignment.pdfUrl}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow hover:opacity-90 transition"
+              >
+                <Download className="h-3.5 w-3.5" /> Download PDF
+              </a>
+            </div>
+          )}
         </Card>
 
         <div className="space-y-6">

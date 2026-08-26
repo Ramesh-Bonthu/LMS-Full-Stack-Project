@@ -1,56 +1,86 @@
-const { Quiz, QuizAttempt, Course, Notification } = require("../models");
+const { Quiz, QuizAttempt, Course, CourseContent, Notification } = require("../models");
 const { Op } = require("sequelize");
-const Groq = require("groq-sdk");
-
-let groq;
-const getGroq = () => {
-  if (!groq && process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  }
-  return groq;
-};
+const { generateCompletion } = require("../utils/aiService");
 
 exports.generateQuizQuestions = async (req, res) => {
-  const { topic, count = 5 } = req.body;
-  if (!topic) return res.status(400).json({ message: "Topic is required" });
-  
-  const groqClient = getGroq();
-  if (!groqClient) {
-    // Fallback to simple generator if no API key
-    const questions = Array.from({ length: count }).map((_, i) => ({
-      question: `Sample question ${i + 1} about ${topic}?`,
-      options: ["Option A", "Option B", "Option C", "Option D"],
-      correctIndex: 0
-    }));
-    return res.json({ title: `${topic} Assessment`, questions });
-  }
+  const { topic, courseId, count = 5 } = req.body;
+  if (!topic && !courseId) return res.status(400).json({ message: "Topic or Course ID is required" });
+
+  // Fetch course content & syllabus context
+  let courseContentContext = "";
+  let targetCourseTitle = topic || "Course Assessment";
 
   try {
-    const prompt = `Generate a technical quiz about "${topic}". 
-    Create exactly ${count} multiple-choice questions.
-    Return ONLY a raw JSON object with this structure:
-    {
-      "title": "${topic} Quiz",
-      "questions": [
-        {
-          "question": "The question text",
-          "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-          "correctIndex": 0
+    let course = null;
+    if (courseId) {
+      course = await Course.findByPk(courseId);
+    }
+    if (!course && topic) {
+      course = await Course.findOne({
+        where: {
+          title: { [Op.like]: `%${topic}%` }
         }
-      ]
-    }`;
+      });
+    }
 
-    const completion = await groqClient.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.1-8b-instant",
-      response_format: { type: "json_object" }
-    });
+    if (course) {
+      targetCourseTitle = `${course.title} (${course.code})`;
+      if (course.content) {
+        courseContentContext += `\nOFFICIAL COURSE SYLLABUS & EXTRACTED TEXT:\n${course.content}\n`;
+      }
+      if (course.description) {
+        courseContentContext += `\nCOURSE DESCRIPTION & OVERVIEW:\n${course.description}\n`;
+      }
+      // Also fetch uploaded lesson files for this course
+      const moduleContents = await CourseContent.findAll({ where: { courseId: course.id } });
+      if (moduleContents && moduleContents.length > 0) {
+        const moduleTitles = moduleContents.map((m, i) => `${i + 1}. ${m.name} (${m.type})`).join("\n");
+        courseContentContext += `\nCOURSE LESSONS & UPLOADED MATERIALS:\n${moduleTitles}\n`;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch course content context:", err.message);
+  }
 
-    const result = JSON.parse(completion.choices[0].message.content);
+  const getFallbackQuiz = () => ({
+    title: `${targetCourseTitle} Quiz`,
+    questions: Array.from({ length: Number(count) }).map((_, i) => ({
+      question: `What is a core concept covered in ${targetCourseTitle} (Question ${i + 1})?`,
+      options: [
+        `Primary rule of ${targetCourseTitle}`,
+        `Secondary implementation detail`,
+        `Alternative configuration method`,
+        `Unrelated system module`
+      ],
+      correctIndex: 0
+    }))
+  });
+
+  try {
+    const prompt = `You are a senior university professor creating an official exam quiz for the course "${targetCourseTitle}".
+
+${courseContentContext ? `CRITICAL MANDATE: Base ALL quiz questions strictly and directly on the following course syllabus and study material:\n${courseContentContext}\n\nEvery question MUST test specific concepts mentioned in the syllabus text above.` : `Generate a technical quiz about "${targetCourseTitle}".`}
+
+Create exactly ${count} multiple-choice questions testing key concepts from this course syllabus.
+Return ONLY a raw JSON object with this exact structure:
+{
+  "title": "${targetCourseTitle} Quiz",
+  "questions": [
+    {
+      "question": "Question text derived directly from the syllabus material",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctIndex": 0
+    }
+  ]
+}`;
+
+    const textResponse = await generateCompletion({ prompt, jsonMode: true });
+    const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+    const result = JSON.parse(cleanedText);
     return res.json(result);
   } catch (error) {
-    console.error("AI Quiz Generation Error:", error);
-    return res.status(500).json({ message: "Failed to generate AI quiz", error: error.message });
+    console.error("AI Quiz Generation Error (using fallback questions):", error.message);
+    return res.json(getFallbackQuiz());
   }
 };
 
@@ -60,7 +90,7 @@ exports.getAllQuizzes = async (req, res) => {
     const enrolledCourseIds = allCourses
       .filter(c => (c.enrolledStudentIds || []).some(id => String(id) === String(req.user.userId)))
       .map(c => c.id);
-    
+
     const quizzes = await Quiz.findAll({
       where: {
         courseId: { [Op.in]: enrolledCourseIds }
@@ -122,21 +152,21 @@ exports.createQuiz = async (req, res) => {
 exports.submitQuiz = async (req, res) => {
   const quiz = await Quiz.findByPk(req.params.id);
   if (!quiz) return res.status(404).json({ message: "Quiz not found" });
-  
+
   const course = await Course.findByPk(quiz.courseId);
   if (!course) return res.status(404).json({ message: "Course not found" });
-  
+
   const enrolled = course.enrolledStudentIds || [];
   if (!enrolled.includes(req.user.userId)) {
     return res.status(403).json({ message: "You must be enrolled in this course to submit the quiz" });
   }
 
   const answers = req.body.answers || req.body;
-  
+
   let marks = 0;
   const totalMarks = Number(quiz.totalMarks || 20);
   const questions = quiz.questions || [];
-  
+
   if (questions.length > 0) {
     const marksPerQuestion = totalMarks / questions.length;
     questions.forEach((q, idx) => {
@@ -149,7 +179,7 @@ exports.submitQuiz = async (req, res) => {
     const answeredCount = typeof answers === "object" ? Object.keys(answers).length : 0;
     marks = Math.min(totalMarks, answeredCount * 2);
   }
-  
+
   const attempt = await QuizAttempt.create({
     quizId: quiz.id,
     studentId: req.user.userId,
@@ -159,8 +189,8 @@ exports.submitQuiz = async (req, res) => {
   });
 
   const percent = Math.round((marks / totalMarks) * 100);
-  return res.status(201).json({ 
-    ...attempt.toJSON(), 
+  return res.status(201).json({
+    ...attempt.toJSON(),
     percentage: percent,
     totalMarks: totalMarks
   });

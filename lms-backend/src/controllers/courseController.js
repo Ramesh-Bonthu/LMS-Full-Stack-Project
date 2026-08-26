@@ -1,4 +1,21 @@
 const { Course, CourseContent, User, Notification } = require("../models");
+const fs = require("fs");
+const pdf = require("pdf-parse");
+
+async function extractPdfText(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return "";
+  try {
+    const dataBuffer = fs.readFileSync(filePath);
+    const parse = typeof pdf === 'function' ? pdf : pdf.default;
+    if (typeof parse === 'function') {
+      const parsedData = await parse(dataBuffer);
+      return parsedData?.text || "";
+    }
+  } catch (err) {
+    console.error("Error parsing PDF file:", err.message);
+  }
+  return "";
+}
 
 function serializeCourse(course, viewerId) {
   const c = course.toJSON();
@@ -109,15 +126,25 @@ exports.markContentComplete = async (req, res) => {
 };
 
 exports.createCourse = async (req, res) => {
-// ...
   try {
-    const { title, code, description } = req.body;
+    const { title, code, description, content } = req.body;
     if (!title || !code) return res.status(400).json({ message: "Title and code are required" });
+
+    let pdfContent = content || "";
+    let pdfUrl = "";
+
+    if (req.file) {
+      const extractedText = await extractPdfText(req.file.path);
+      if (extractedText) pdfContent = extractedText;
+      pdfUrl = `/uploads/${req.file.filename}`;
+    }
 
     const newCourse = await Course.create({
       title,
       code,
       description: description || "",
+      content: pdfContent,
+      pdfUrl: pdfUrl,
       facultyId: req.user.userId,
       facultyName: req.user.name,
       status: req.user.role === "ADMIN" ? "APPROVED" : "PENDING",
@@ -157,7 +184,14 @@ exports.updateCourse = async (req, res) => {
       return res.status(403).json({ message: "You can only edit your own courses" });
     }
 
-    await course.update(req.body);
+    const updateData = { ...req.body };
+    if (req.file) {
+      const extractedText = await extractPdfText(req.file.path);
+      if (extractedText) updateData.content = extractedText;
+      updateData.pdfUrl = `/uploads/${req.file.filename}`;
+    }
+
+    await course.update(updateData);
     return res.json(course);
   } catch (error) {
     console.error("Error updating course:", error.message);

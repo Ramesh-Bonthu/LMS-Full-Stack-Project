@@ -6,6 +6,8 @@ module.exports = (sequelize) => {
     title: { type: DataTypes.STRING, allowNull: false },
     code: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT },
+    content: { type: DataTypes.TEXT },
+    pdfUrl: { type: DataTypes.STRING },
     facultyId: { type: DataTypes.INTEGER },
     facultyName: { type: DataTypes.STRING },
     status: { type: DataTypes.STRING, defaultValue: "PENDING" },

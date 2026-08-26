@@ -58,9 +58,15 @@ exports.createAssignment = async (req, res) => {
       return res.status(403).json({ message: "Assignments can only be created for approved courses" });
     }
 
+    let pdfUrl = "";
+    if (req.file) {
+      pdfUrl = `/uploads/${req.file.filename}`;
+    }
+
     const assignment = await Assignment.create({
       title,
       description: description || "",
+      pdfUrl: pdfUrl,
       courseId: course.id,
       courseName: course.title,
       deadline: deadline ? new Date(deadline) : new Date(),

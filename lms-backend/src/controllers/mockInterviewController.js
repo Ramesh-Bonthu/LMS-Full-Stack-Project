@@ -1,21 +1,13 @@
 const { MockInterview } = require("../models");
-const Groq = require("groq-sdk");
 const fs = require("fs");
 const pdf = require("pdf-parse");
+const { generateCompletion } = require("../utils/aiService");
 
 // Ensure the directory exists for resumes
 const resumeDir = "uploads/resumes/";
 if (!fs.existsSync(resumeDir)) {
   fs.mkdirSync(resumeDir, { recursive: true });
 }
-
-let groq;
-const getGroq = () => {
-  if (!groq && process.env.GROQ_API_KEY) {
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  }
-  return groq;
-};
 
 const INTERVIEW_SYSTEM_PROMPT = `
 You are a professional technical interviewer. 
@@ -76,37 +68,25 @@ exports.startSession = async (req, res) => {
     });
 
     let responseText;
-    const groqClient = getGroq();
-
-    if (groqClient) {
-      try {
-        const isComm = type === "COMMUNICATION";
-        const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
+    try {
+      const isComm = type === "COMMUNICATION";
+      const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
+      
+      let prompt;
+      if (isComm) {
+        prompt = subject 
+          ? `Start a friendly conversation about "${subject}". Greet me and ask an open-ended question to get me talking.`
+          : `Start a friendly conversation. Greet me and ask an interesting open-ended question about any general topic to get me talking.`;
+      } else {
+        prompt = `Start a ${type} interview about ${subject}. ${resumeText ? "The candidate's resume is provided below." : ""} 
+        Greet them warmly and ask a simple warm-up question.
         
-        let prompt;
-        if (isComm) {
-          prompt = subject 
-            ? `Start a friendly conversation about "${subject}". Greet me and ask an open-ended question to get me talking.`
-            : `Start a friendly conversation. Greet me and ask an interesting open-ended question about any general topic to get me talking.`;
-        } else {
-          prompt = `Start a ${type} interview about ${subject}. ${resumeText ? "The candidate's resume is provided below." : ""} 
-          Greet them warmly and ask a simple warm-up question.
-          
-          ${resumeText ? "RESUME TEXT:\n" + resumeText : ""}`;
-        }
-
-        const completion = await groqClient.chat.completions.create({
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ],
-          model: "llama-3.1-8b-instant",
-        });
-        responseText = completion.choices[0].message.content;
-      } catch (e) {
-        responseText = DEMO_RESPONSES[0];
+        ${resumeText ? "RESUME TEXT:\n" + resumeText : ""}`;
       }
-    } else {
+
+      responseText = await generateCompletion({ prompt, systemPrompt });
+    } catch (e) {
+      console.warn("AI generation fallback for startSession:", e.message);
       responseText = DEMO_RESPONSES[0];
     }
 
@@ -129,27 +109,21 @@ exports.chat = async (req, res) => {
     history.push({ role: "user", content: message });
 
     let aiResponse;
-    const groqClient = getGroq();
+    try {
+      const isComm = interview.type === "COMMUNICATION";
+      const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
 
-    if (groqClient) {
-      try {
-        const isComm = interview.type === "COMMUNICATION";
-        const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
+      const formattedMessages = history.map(m => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: m.content
+      }));
 
-        const messages = [
-          { role: "system", content: systemPrompt + (interview.resumeText ? "\nResume Context: " + interview.resumeText : "") },
-          ...history.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }))
-        ];
-        const completion = await groqClient.chat.completions.create({
-          messages,
-          model: "llama-3.1-8b-instant",
-        });
-        aiResponse = completion.choices[0].message.content;
-      } catch (e) {
-        const aiMsgCount = history.filter(m => m.role === 'ai').length;
-        aiResponse = DEMO_RESPONSES[aiMsgCount] || "Thank you. Let's continue.";
-      }
-    } else {
+      aiResponse = await generateCompletion({
+        systemPrompt: systemPrompt + (interview.resumeText ? "\nResume Context: " + interview.resumeText : ""),
+        messages: formattedMessages
+      });
+    } catch (e) {
+      console.warn("AI generation fallback for chat:", e.message);
       const aiMsgCount = history.filter(m => m.role === 'ai').length;
       aiResponse = DEMO_RESPONSES[aiMsgCount] || "Thank you. Let's continue.";
     }
@@ -170,27 +144,18 @@ exports.endSession = async (req, res) => {
 
     const history = interview.transcript || [];
     let feedback;
-    const groqClient = getGroq();
+    try {
+      const isComm = interview.type === "COMMUNICATION";
+      const coachPrompt = isComm 
+        ? "You are a communication coach. Review this conversation and provide feedback on the user's communication skills, clarity, and engagement. Provide a score (1-10)."
+        : "You are an interview coach. Provide feedback and a score (1-10).";
 
-    if (groqClient) {
-      try {
-        const isComm = interview.type === "COMMUNICATION";
-        const coachPrompt = isComm 
-          ? "You are a communication coach. Review this conversation and provide feedback on the user's communication skills, clarity, and engagement. Provide a score (1-10)."
-          : "You are an interview coach. Provide feedback and a score (1-10).";
-
-        const completion = await groqClient.chat.completions.create({
-          messages: [
-            { role: "system", content: coachPrompt },
-            { role: "user", content: `Review this session: ${JSON.stringify(history)}` }
-          ],
-          model: "llama-3.1-8b-instant",
-        });
-        feedback = completion.choices[0].message.content;
-      } catch (e) {
-        feedback = "Good job! (Demo feedback)";
-      }
-    } else {
+      feedback = await generateCompletion({
+        systemPrompt: coachPrompt,
+        prompt: `Review this session: ${JSON.stringify(history)}`
+      });
+    } catch (e) {
+      console.warn("AI generation fallback for endSession:", e.message);
       feedback = "Good job! (Demo feedback)";
     }
 

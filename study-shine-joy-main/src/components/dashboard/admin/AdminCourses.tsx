@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { type Course, api } from "@/lib/api";
+import { type Course, api, API_BASE_URL } from "@/lib/api";
+import { FileText } from "lucide-react";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
 
 export function AdminCourses() {
@@ -39,13 +40,42 @@ export function AdminCourses() {
           <Card key={course.id}>
             <div className="flex items-start justify-between">
               <div>
-                <div className="font-display text-lg font-bold">{course.title}</div>
+                <div className="font-display text-lg font-bold">{course.title} ({course.code})</div>
                 <div className="text-xs text-muted-foreground">
                   Submitted by {course.facultyName || "Faculty"}
                 </div>
               </div>
               <StatusPill status={course.status || "PENDING"} />
             </div>
+
+            {course.pdfUrl && (
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/10 p-2.5 text-xs">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <FileText className="h-4 w-4" /> Course PDF Attached
+                </span>
+                <a
+                  href={`${API_BASE_URL.replace("/api", "")}${course.pdfUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-emerald-500 hover:underline"
+                >
+                  View PDF &rarr;
+                </a>
+              </div>
+            )}
+
+            {course.description && (
+              <p className="mt-2 text-xs text-muted-foreground bg-secondary/30 p-2.5 rounded-xl border border-border">
+                <strong>Description:</strong> {course.description}
+              </p>
+            )}
+
+            {course.content && (
+              <div className="mt-2 text-xs bg-primary/5 p-2.5 rounded-xl border border-primary/20">
+                <strong className="text-primary block mb-1">Extracted PDF Syllabus Text:</strong>
+                <p className="text-muted-foreground whitespace-pre-line max-h-32 overflow-y-auto">{course.content}</p>
+              </div>
+            )}
             <div className="mt-4 flex gap-2">
               <Btn
                 variant="soft"

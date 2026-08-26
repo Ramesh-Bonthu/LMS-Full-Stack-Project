@@ -222,9 +222,35 @@ function StudentCourseDetails({ course: initialCourse, onBack }: { course: Cours
           </div>
         </div>
       </div>
-      
+
+      {/* Course Syllabus & PDF Download */}
+      {(course.content || course.pdfUrl) && (
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-lg font-bold flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" /> Course Syllabus & Study Material
+            </h3>
+            {course.pdfUrl && (
+              <a
+                href={`${API_BASE_URL.replace("/api", "")}${course.pdfUrl}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-bold text-emerald-500 hover:bg-emerald-500/20 transition"
+              >
+                <FileText className="h-4 w-4" /> Download Official Course PDF
+              </a>
+            )}
+          </div>
+          {course.content && (
+            <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed bg-secondary/20 p-4 rounded-2xl border border-border max-h-60 overflow-y-auto">
+              {course.content}
+            </p>
+          )}
+        </Card>
+      )}
+
       <Card>
-        <h3 className="mb-4 font-display text-lg font-bold">Course Content</h3>
+        <h3 className="mb-4 font-display text-lg font-bold">Course Content Files & Resources</h3>
         {loading ? (
           <div className="flex justify-center py-10">
              <Loader className="h-6 w-6 animate-spin text-primary" />

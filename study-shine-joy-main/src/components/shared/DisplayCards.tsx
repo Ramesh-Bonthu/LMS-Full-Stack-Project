@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Upload } from "lucide-react";
-import { type Course, type Assignment } from "@/lib/api";
+import { Upload, FileText } from "lucide-react";
+import { type Course, type Assignment, API_BASE_URL } from "@/lib/api";
 import { Card, StatusPill } from "./UIPrimitives";
 
 export function DynamicCourseCard({ course }: { course: Course }) {
@@ -67,7 +67,19 @@ export function DynamicAssignmentTable({
           {assignments.length > 0 ? (
             assignments.map((a) => (
               <tr key={a.id} className="border-t border-border transition hover:bg-secondary/40">
-                <td className="py-3 font-medium">{a.title}</td>
+                <td className="py-3 font-medium">
+                  <div>{a.title}</div>
+                  {a.pdfUrl && (
+                    <a
+                      href={`${API_BASE_URL.replace("/api", "")}${a.pdfUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-500 hover:underline mt-0.5"
+                    >
+                      <FileText className="h-3 w-3" /> Question Paper PDF
+                    </a>
+                  )}
+                </td>
                 <td className="py-3 text-muted-foreground">
                   {a.courseName || "Course"}
                 </td>

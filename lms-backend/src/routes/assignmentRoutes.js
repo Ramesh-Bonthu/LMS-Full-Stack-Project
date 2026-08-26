@@ -10,7 +10,7 @@ router.get("/submissions", verifyToken, assignmentController.getAllSubmissions);
 router.post("/generate", verifyToken, requireRole("FACULTY", "ADMIN"), assignmentController.generateAssignmentDescription);
 
 // Parameterized routes
-router.post("/", verifyToken, requireRole("FACULTY", "ADMIN"), assignmentController.createAssignment);
+router.post("/", verifyToken, requireRole("FACULTY", "ADMIN"), upload.single("pdf"), assignmentController.createAssignment);
 router.get("/:id", verifyToken, assignmentController.getAssignmentById);
 router.put("/:id", verifyToken, requireRole("FACULTY", "ADMIN"), assignmentController.updateAssignment);
 router.post("/:id/submit", verifyToken, requireRole("STUDENT"), upload.single("file"), assignmentController.submitAssignment);

@@ -22,6 +22,7 @@ export interface Course {
   title: string;
   code: string;
   description?: string;
+  content?: string;
   facultyId?: number;
   facultyName?: string;
   status?: string;
@@ -37,6 +38,7 @@ export interface Assignment {
   id: number;
   title: string;
   description?: string;
+  pdfUrl?: string;
   courseId?: number;
   courseName?: string;
   deadline?: string;
@@ -336,15 +338,21 @@ class ApiClient {
     return this.request(`/courses/${courseId}`, { method: "GET" });
   }
 
-  async createCourse(courseData: Partial<Course>) {
-    return this.request("/courses", {
+  async createCourse(courseData: any) {
+    if (courseData instanceof FormData) {
+      return this.requestFormData<Course>("/courses", courseData, "POST");
+    }
+    return this.request<Course>("/courses", {
       method: "POST",
       body: JSON.stringify(courseData),
     });
   }
 
-  async updateCourse(courseId: string, courseData: Partial<Course>) {
-    return this.request(`/courses/${courseId}`, {
+  async updateCourse(courseId: string, courseData: any) {
+    if (courseData instanceof FormData) {
+      return this.requestFormData<Course>(`/courses/${courseId}`, courseData, "PUT");
+    }
+    return this.request<Course>(`/courses/${courseId}`, {
       method: "PUT",
       body: JSON.stringify(courseData),
     });
@@ -374,8 +382,11 @@ class ApiClient {
     return this.request(`/assignments/${assignmentId}`, { method: "GET" });
   }
 
-  async createAssignment(assignmentData: Partial<Assignment>) {
-    return this.request("/assignments", {
+  async createAssignment(assignmentData: any) {
+    if (assignmentData instanceof FormData) {
+      return this.requestFormData<Assignment>("/assignments", assignmentData, "POST");
+    }
+    return this.request<Assignment>("/assignments", {
       method: "POST",
       body: JSON.stringify(assignmentData),
     });
@@ -405,10 +416,10 @@ class ApiClient {
   }
 
   // QUIZ ENDPOINTS
-  async generateQuiz(topic: string, count: number = 5) {
+  async generateQuiz(topic: string, count: number = 5, courseId?: string) {
     return this.request<{ title: string; questions: Question[] }>("/quizzes/generate", {
       method: "POST",
-      body: JSON.stringify({ topic, count }),
+      body: JSON.stringify({ topic, count, courseId }),
     });
   }
 
