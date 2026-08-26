@@ -86,7 +86,12 @@ export function StudentQuizzes() {
     try {
       setLoading(true);
       const currentAnswers = answersRef.current;
-      const res = await api.submitQuizAttempt(activeQuizRef.current.id.toString(), currentAnswers);
+      const payload = {
+        answers: currentAnswers,
+        malpractice: Boolean(reason),
+        tabSwitches: reason ? 1 : 0
+      };
+      const res = await api.submitQuizAttempt(activeQuizRef.current.id.toString(), payload);
       if (res.success) {
         setResult(res.data);
       } else {

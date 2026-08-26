@@ -11,6 +11,16 @@ export const Route = createFileRoute("/dashboard/$role/$section")({
     if (!validRoles.includes(params.role as Role)) {
       throw notFound();
     }
+    if (
+      params.role === "faculty" &&
+      params.section !== "courses" &&
+      ["quizzes", "assignments", "submissions", "attendance", "announcements", "content"].includes(params.section)
+    ) {
+      throw redirect({
+        to: "/dashboard/$role/$section",
+        params: { role: "faculty", section: "courses" },
+      });
+    }
   },
   head: ({ params }) => ({
     meta: [

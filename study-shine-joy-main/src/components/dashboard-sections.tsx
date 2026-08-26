@@ -72,7 +72,7 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
   if (role === "faculty") {
     switch (section) {
       case "home": return <FacultyHome />;
-      case "courses": return <FacultyCourses />;
+      case "courses":
       case "assignments":
       case "quizzes":
       case "content":

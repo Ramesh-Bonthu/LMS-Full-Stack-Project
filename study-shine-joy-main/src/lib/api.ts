@@ -431,6 +431,10 @@ class ApiClient {
     return this.request(`/quizzes/${quizId}`, { method: "GET" });
   }
 
+  async getQuizAttempts(quizId: string) {
+    return this.request(`/quizzes/${quizId}/attempts`, { method: "GET" });
+  }
+
   async createQuiz(quizData: Partial<Quiz>) {
     return this.request("/quizzes", {
       method: "POST",
