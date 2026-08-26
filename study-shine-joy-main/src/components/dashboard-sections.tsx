@@ -73,12 +73,13 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
     switch (section) {
       case "home": return <FacultyHome />;
       case "courses": return <FacultyCourses />;
-      case "assignments": return <FacultyAssignments />;
-      case "quizzes": return <FacultyQuizzes />;
-      case "content": return <FacultyContent />;
-      case "attendance": return <FacultyAttendance />;
-      case "submissions": return <FacultySubmissions />;
-      case "announcements": return <FacultyAnnouncements />;
+      case "assignments":
+      case "quizzes":
+      case "content":
+      case "attendance":
+      case "submissions":
+      case "announcements":
+        return <FacultyCourses />;
       default: return <FacultyHome />;
     }
   }
