@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Megaphone, Plus, X, Calendar, Users, FileText, Bell, Sparkles } from "lucide-react";
-import { type Announcement, type Course, api } from "@/lib/api";
+import { type Announcement, type Course, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 
 interface FacultyAnnouncementsProps {
@@ -191,7 +191,7 @@ export function FacultyAnnouncements({
                 <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
                   <span className="flex items-center gap-1 bg-secondary px-2.5 py-1 rounded-lg">
                     <Calendar className="h-3 w-3 text-primary" />
-                    {item.time || "Recently Posted"}
+                    {formatRelativeTime(item.createdAt) || item.time || "Just now"}
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                     Active Notice

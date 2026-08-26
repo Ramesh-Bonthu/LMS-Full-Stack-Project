@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Megaphone } from "lucide-react";
-import { type Announcement, api } from "@/lib/api";
+import { type Announcement, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 
 export function AdminAnnouncements() {
@@ -68,7 +68,7 @@ export function AdminAnnouncements() {
             <div key={item.id} className="rounded-xl border border-border bg-secondary/40 p-3">
               <div className="font-medium">{item.title}</div>
               <div className="text-xs text-muted-foreground">
-                {item.audience} · {item.time}
+                {item.audience} · {formatRelativeTime(item.createdAt) || item.time || "Just now"}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{item.body}</p>
             </div>

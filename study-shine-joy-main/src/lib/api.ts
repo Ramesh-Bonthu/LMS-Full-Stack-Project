@@ -1,6 +1,27 @@
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8082/api";
 
+export function formatRelativeTime(dateInput?: string | Date | number): string {
+  if (!dateInput) return "Just now";
+  let dateStr = String(dateInput);
+  if (typeof dateInput === "string" && !dateStr.endsWith("Z") && !dateStr.includes("+") && dateStr.includes("T")) {
+    dateStr += "Z";
+  }
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "Just now";
+
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 600000) return "Just now";
+
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 60) return `${Math.floor(diffMin / 10) * 10}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

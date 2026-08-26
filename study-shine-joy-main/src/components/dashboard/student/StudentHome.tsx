@@ -9,7 +9,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { type Course, type Assignment, type Announcement, type PerformanceRecord, api } from "@/lib/api";
+import { type Course, type Assignment, type Announcement, type PerformanceRecord, api, formatRelativeTime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader, Card } from "../../shared/UIPrimitives";
 import { DynamicCourseCard, DynamicAssignmentTable } from "../../shared/DisplayCards";
@@ -198,7 +198,7 @@ export function StudentHome() {
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{n.body}</p>
                     <div className="mt-2 text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-primary" /> {n.time || "Recently Posted"}
+                      <Clock className="h-3 w-3 text-primary" /> {formatRelativeTime(n.createdAt) || n.time || "Just now"}
                     </div>
                   </div>
                 ))
