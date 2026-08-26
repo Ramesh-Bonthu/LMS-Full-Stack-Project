@@ -98,7 +98,7 @@ export function FacultyCourses() {
       }
     } catch (err) {
       console.error("Error fetching course contents:", err);
-    } fontally {
+    } finally {
       setContentsLoading(false);
     }
   };
