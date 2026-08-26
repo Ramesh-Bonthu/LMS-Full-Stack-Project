@@ -20,9 +20,14 @@ export function PageHeader({
   );
 }
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  onClick,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-card p-5 shadow-soft ${className}`}>
+    <div onClick={onClick} {...rest} className={`rounded-2xl border border-border bg-card p-5 shadow-soft ${className}`}>
       {children}
     </div>
   );
