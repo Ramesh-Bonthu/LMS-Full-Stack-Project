@@ -7,6 +7,8 @@ module.exports = (sequelize) => {
     studentId: { type: DataTypes.INTEGER },
     answers: { type: DataTypes.JSON },
     marks: { type: DataTypes.INTEGER },
+    malpractice: { type: DataTypes.BOOLEAN, defaultValue: false },
+    tabSwitches: { type: DataTypes.INTEGER, defaultValue: 0 },
     submittedAt: { type: DataTypes.DATE },
   });
 };

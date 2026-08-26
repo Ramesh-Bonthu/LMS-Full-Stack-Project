@@ -8,6 +8,22 @@ const PORT = Number(process.env.PORT || 8082);
 // Initialization
 sequelize.sync({ alter: true }).then(async () => {
   console.log("Database synced");
+  
+  // Ensure SQLite AttendanceRecords table has the required columns
+  try {
+    await sequelize.query("ALTER TABLE AttendanceRecords ADD COLUMN periodsConducted INTEGER DEFAULT 1;");
+  } catch (e) {}
+  try {
+    await sequelize.query("ALTER TABLE AttendanceRecords ADD COLUMN periodsAttended INTEGER DEFAULT 1;");
+  } catch (e) {}
+  try {
+    await sequelize.query("ALTER TABLE AttendanceRecords ADD COLUMN status VARCHAR(255) DEFAULT 'PRESENT';");
+  } catch (e) {}
+  try {
+    await sequelize.query("UPDATE AttendanceRecords SET periodsConducted = 1 WHERE periodsConducted IS NULL;");
+    await sequelize.query("UPDATE AttendanceRecords SET periodsAttended = 1 WHERE periodsAttended IS NULL AND value > 0;");
+  } catch (e) {}
+
   const count = await User.count();
   if (count === 0) {
     await User.bulkCreate([

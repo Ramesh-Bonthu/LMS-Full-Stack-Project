@@ -1,4 +1,4 @@
-const { Quiz, QuizAttempt, Course, CourseContent, Notification } = require("../models");
+const { Quiz, QuizAttempt, Course, CourseContent, Notification, User } = require("../models");
 const { Op } = require("sequelize");
 const { generateCompletion } = require("../utils/aiService");
 
@@ -162,6 +162,8 @@ exports.submitQuiz = async (req, res) => {
   }
 
   const answers = req.body.answers || req.body;
+  const tabSwitches = Number(req.body.tabSwitches || 0);
+  const malpractice = Boolean(req.body.malpractice || tabSwitches > 0);
 
   let marks = 0;
   const totalMarks = Number(quiz.totalMarks || 20);
@@ -185,6 +187,8 @@ exports.submitQuiz = async (req, res) => {
     studentId: req.user.userId,
     answers,
     marks: Math.round(marks),
+    malpractice,
+    tabSwitches,
     submittedAt: new Date(),
   });
 
@@ -194,4 +198,46 @@ exports.submitQuiz = async (req, res) => {
     percentage: percent,
     totalMarks: totalMarks
   });
+};
+
+exports.getQuizAttempts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const attempts = await QuizAttempt.findAll({
+      where: { quizId: id },
+      order: [["id", "DESC"]]
+    });
+
+    // Group by studentId to get only the latest attempt per student
+    const latestAttemptsMap = new Map();
+    attempts.forEach(attempt => {
+      if (!latestAttemptsMap.has(attempt.studentId)) {
+        latestAttemptsMap.set(attempt.studentId, attempt);
+      }
+    });
+
+    const uniqueAttempts = Array.from(latestAttemptsMap.values());
+    const studentIds = uniqueAttempts.map(a => a.studentId);
+    const users = await User.findAll({ where: { id: { [Op.in]: studentIds } } });
+    const userMap = {};
+    users.forEach(u => { userMap[u.id] = u; });
+
+    const enriched = uniqueAttempts.map(a => {
+      const student = userMap[a.studentId];
+      const isMalpractice = Boolean(a.malpractice || (a.tabSwitches && a.tabSwitches > 0));
+      return {
+        ...a.toJSON(),
+        studentId: a.studentId,
+        studentName: student ? student.name : `Student #${a.studentId}`,
+        studentEmail: student ? student.email : "",
+        malpractice: isMalpractice,
+        tabSwitches: a.tabSwitches || 0,
+      };
+    });
+
+    return res.json(enriched);
+  } catch (err) {
+    console.error("Error fetching quiz attempts:", err.message);
+    return res.status(500).json({ message: "Error fetching quiz attempts", error: err.message });
+  }
 };

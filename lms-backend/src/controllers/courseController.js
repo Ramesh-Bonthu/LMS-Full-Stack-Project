@@ -364,10 +364,27 @@ exports.uploadCourseContent = async (req, res) => {
 };
 
 exports.getCourseStudents = async (req, res) => {
-  const course = await Course.findByPk(req.params.id);
-  if (!course) return res.status(404).json({ message: "Course not found" });
-  
-  const enrolled = course.enrolledStudentIds || [];
-  const students = await User.findAll({ where: { id: enrolled }, attributes: ['id', 'name', 'email'] });
-  return res.json(students);
+  try {
+    const course = await Course.findByPk(req.params.id);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    
+    const enrolled = (course.enrolledStudentIds || []).map(id => Number(id));
+    let students = [];
+    if (enrolled.length > 0) {
+      students = await User.findAll({
+        where: { id: enrolled, role: "STUDENT" },
+        attributes: ['id', 'name', 'email', 'role']
+      });
+    }
+    if (students.length === 0) {
+      students = await User.findAll({
+        where: { role: "STUDENT" },
+        attributes: ['id', 'name', 'email', 'role']
+      });
+    }
+    return res.json(students);
+  } catch (error) {
+    console.error("Error fetching course students:", error);
+    return res.status(500).json({ message: "Error fetching course students", error: error.message });
+  }
 };

@@ -7,6 +7,9 @@ module.exports = (sequelize) => {
     courseId: { type: DataTypes.INTEGER },
     date: { type: DataTypes.STRING },
     month: { type: DataTypes.STRING },
-    value: { type: DataTypes.INTEGER },
+    value: { type: DataTypes.INTEGER, defaultValue: 100 },
+    status: { type: DataTypes.STRING, defaultValue: "PRESENT" },
+    periodsConducted: { type: DataTypes.INTEGER, defaultValue: 1 },
+    periodsAttended: { type: DataTypes.INTEGER, defaultValue: 1 },
   });
 };
