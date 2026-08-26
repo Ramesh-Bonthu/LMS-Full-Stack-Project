@@ -3,7 +3,11 @@ import { Loader, PlayCircle, CheckCircle2, ShieldAlert, Camera, AlertTriangle, S
 import { type Quiz, api } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 
-export function StudentQuizzes() {
+interface StudentQuizzesProps {
+  course?: Course | null;
+}
+
+export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
@@ -57,7 +61,12 @@ export function StudentQuizzes() {
       setLoading(true);
       const res = await api.getQuizzes();
       if (res.success && res.data) {
-        setQuizzes(Array.isArray(res.data) ? res.data : []);
+        const allQuizzes = Array.isArray(res.data) ? res.data : [];
+        if (course) {
+          setQuizzes(allQuizzes.filter((q: any) => String(q.courseId) === String(course.id)));
+        } else {
+          setQuizzes(allQuizzes);
+        }
       }
     } catch (error) {
       console.error("Error fetching quizzes:", error);
@@ -438,24 +447,28 @@ export function StudentQuizzes() {
       ) : quizzes.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((q) => (
-            <Card key={q.id}>
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Course: {q.courseId || "N/A"}
+            <Card key={q.id} className="flex flex-col justify-between h-full min-h-[220px]">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Course: {q.courseId || "N/A"}
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500">
+                    <ShieldCheck className="h-3 w-3" /> Proctored
+                  </span>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-                  <ShieldCheck className="h-3 w-3" /> Proctored
-                </span>
+
+                <div className="font-display text-base font-bold text-foreground line-clamp-2 min-h-[48px] flex items-center leading-snug">
+                  {q.title || "Quiz"}
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground font-semibold">
+                  <span>{q.totalQuestions || (q.questions ? q.questions.length : 0)} questions</span>
+                  <span>·</span>
+                  <span>{q.timeLimit || 15} min</span>
+                </div>
               </div>
 
-              <div className="mt-2 font-display text-lg font-bold">{q.title || "Quiz"}</div>
-              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                <span>{q.totalQuestions || (q.questions ? q.questions.length : 0)} questions</span>
-                <span>·</span>
-                <span>{q.timeLimit || 15} min</span>
-              </div>
-
-              <Btn className="mt-5 w-full justify-center" onClick={() => setProctorModalQuiz(q)}>
+              <Btn className="mt-5 w-full justify-center shadow-glow" onClick={() => setProctorModalQuiz(q)}>
                 <PlayCircle className="h-4 w-4" />
                 Start quiz
               </Btn>

@@ -58,9 +58,9 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
     switch (section) {
       case "home": return <StudentHome />;
       case "courses": return <StudentCourses />;
-      case "assignments": return <StudentAssignments />;
-      case "quizzes": return <StudentQuizzes />;
-      case "performance": return <StudentPerformance />;
+      case "assignments": return <StudentCourses />;
+      case "quizzes": return <StudentCourses />;
+      case "performance": return <StudentHome />;
       case "attendance": return <StudentAttendance />;
       case "mock-interviews": return <MockInterviews />;
 

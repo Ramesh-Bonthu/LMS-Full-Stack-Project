@@ -4,19 +4,13 @@ import { type Course, type Assignment, API_BASE_URL } from "@/lib/api";
 import { Card, StatusPill } from "./UIPrimitives";
 
 export function DynamicCourseCard({ course }: { course: Course }) {
-  const courseColors = [
-    "from-blue-500 to-blue-600",
-    "from-purple-500 to-purple-600",
-    "from-pink-500 to-pink-600",
-    "from-green-500 to-green-600",
-  ];
-  const color = courseColors[course.id % courseColors.length];
+  const color = "from-blue-600 via-indigo-600 to-primary";
   const progress = course.progress || 0;
 
   return (
     <motion.div
       whileHover={{ y: -3 }}
-      className="overflow-hidden rounded-2xl border border-border bg-gradient-card"
+      className="overflow-hidden rounded-2xl border border-border bg-gradient-card shadow-sm hover:shadow-md transition"
     >
       <div className={`h-20 bg-gradient-to-br ${color}`} />
       <div className="p-4">

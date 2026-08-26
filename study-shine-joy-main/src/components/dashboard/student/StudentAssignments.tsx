@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { Loader, ArrowLeft, Upload, CheckCircle2, FileText, Download } from "lucide-react";
-import { type Assignment, api, API_BASE_URL } from "@/lib/api";
+import { type Assignment, type Course, api, API_BASE_URL } from "@/lib/api";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
 import { DynamicAssignmentTable } from "../../shared/DisplayCards";
 
-export function StudentAssignments() {
+interface StudentAssignmentsProps {
+  course?: Course | null;
+}
+
+export function StudentAssignments({ course }: StudentAssignmentsProps = {}) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -14,7 +18,12 @@ export function StudentAssignments() {
       setLoading(true);
       const res = await api.getAssignments();
       if (res.success && res.data) {
-        setAssignments(Array.isArray(res.data) ? res.data : []);
+        const all = Array.isArray(res.data) ? res.data : [];
+        if (course) {
+          setAssignments(all.filter((a: any) => String(a.courseId) === String(course.id)));
+        } else {
+          setAssignments(all);
+        }
       }
     } catch (error) {
       console.error("Error fetching assignments:", error);

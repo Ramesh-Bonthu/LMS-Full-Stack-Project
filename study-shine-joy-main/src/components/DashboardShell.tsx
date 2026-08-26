@@ -29,15 +29,11 @@ type NavItem = { to: string; label: string; icon: React.ComponentType<{ classNam
 const navByRole: Record<Role, NavItem[]> = {
   student: [
     { to: "", label: "Home", icon: Home },
-    { to: "courses", label: "Courses", icon: BookOpen },
-    { to: "assignments", label: "Assignments", icon: ClipboardList },
-    { to: "quizzes", label: "Quizzes", icon: FileQuestion },
-    { to: "performance", label: "Performance", icon: BarChart3 },
+    { to: "courses", label: "Course Management", icon: BookOpen },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
     { to: "mock-interviews", label: "Mock Interviews", icon: Bot },
-
-    { to: "notifications", label: "Notifications", icon: Bell },
     { to: "library", label: "Library", icon: BookOpen },
+    { to: "notifications", label: "Notifications", icon: Bell },
     { to: "profile", label: "Profile", icon: User },
   ],
   faculty: [
