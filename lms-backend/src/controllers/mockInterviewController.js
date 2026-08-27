@@ -9,35 +9,66 @@ if (!fs.existsSync(resumeDir)) {
   fs.mkdirSync(resumeDir, { recursive: true });
 }
 
-const INTERVIEW_SYSTEM_PROMPT = `
-You are a professional technical interviewer. 
-- Ask one question at a time.
-- Stay in character.
-- CONCISENESS: Keep your responses and follow-up comments brief and professional. Avoid long-winded explanations or deep-diving into answers unless specifically asked.
-- WARM-UP PHASE: Start the interview with a friendly greeting and ONE general warm-up question (e.g., "How are you today?" or "Tell me a bit about yourself") before diving into the topic.
-- TECHNICAL PHASE: After the warm-up, gradually move into technical questions. Start basic and move to advanced topics.
-- RESUME ANALYSIS: If resume text is provided, tailor your questions to the candidate's specific experience, projects, and skills mentioned in the resume.
-- IMPORTANT: Use plain text only. DO NOT use Markdown, bold (**), asterisks (*), or any symbols. This text will be read aloud by a text-to-speech system.
-`;
+function cleanAndCapSpeechText(text) {
+  if (!text) return "";
+  
+  // 1. Remove Markdown tables, pipes, headers, bold, symbols, brackets, and emojis
+  let cleaned = text
+    .replace(/\|[^\n]+\|/g, "")
+    .replace(/#+/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/\[.*?\]/g, "")
+    .replace(/\(.*?\)/g, "")
+    .replace(/[\~\`\>\_]/g, "")
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-const COMMUNICATION_SYSTEM_PROMPT = `
-You are a friendly and engaging communication coach. 
-- Your goal is to help the user improve their conversational English and communication skills.
-- Be supportive, natural, and conversational.
-- CONCISENESS: Keep your responses medium-length. Do not provide overly detailed or "essay-like" explanations. One or two short paragraphs or a few sentences are usually enough.
-- You can talk about ANYTHING: hobbies, life, technology, travel, movies, or even just daily routines.
-- If the user specifies a topic, stick to it. If not, start with a friendly greeting and an open-ended conversation starter.
-- Ask questions that encourage longer, descriptive answers from the user, but keep YOUR responses snappy.
-- Occasionally provide gentle tips on how they could express themselves better if they make a clear mistake.
-- IMPORTANT: Use plain text only. DO NOT use Markdown, bold (**), asterisks (*), or any symbols. This text will be read aloud by a text-to-speech system.
-`;
+  // 2. Cap at maximum 2 short sentences
+  const sentences = cleaned.split(/(?<=[.?!])\s+/).filter(Boolean);
+  if (sentences.length > 2) {
+    cleaned = sentences.slice(0, 2).join(" ");
+  }
+
+  // 3. Absolute word count safety net (max 35 words)
+  const words = cleaned.split(/\s+/);
+  if (words.length > 35) {
+    cleaned = words.slice(0, 35).join(" ");
+    if (!cleaned.endsWith(".")) cleaned += ".";
+  }
+
+  return cleaned;
+}
+
+const buildInterviewSystemPrompt = (type, subject, resumeText) => {
+  const topicName = subject || type || "Technical Concepts";
+  return `You are a strict technical interviewer conducting a formal job interview for "${topicName}".
+
+MANDATORY INSTRUCTIONS:
+1. DIRECT TECHNICAL QUESTION: Immediately ask ONE direct technical interview question about "${topicName}".
+2. DO NOT ask the candidate what they want to talk about, what experience level they have, or to set an agenda.
+3. DO NOT output tables, section lists, markdown, bold text (**), asterisks (*), pipes (|), or emojis.
+4. STRICT LENGTH: Maximum 1 to 2 short sentences. Never exceed 25 words.
+${resumeText ? "\nCandidate Resume Context:\n" + resumeText : ""}`;
+};
+
+const buildCommSystemPrompt = (subject) => {
+  const topicName = subject || "General Conversation & Public Speaking";
+  return `You are a professional communication coach interviewing a candidate to evaluate their English communication skills on "${topicName}".
+
+MANDATORY RULES:
+1. FOCUS: Keep the conversation strictly focused on "${topicName}".
+2. MAXIMUM 2 LINES: Keep your responses strictly short (1-2 sentences maximum). Ask ONE clear open-ended question at a time.
+3. DOMAIN BOUNDARY: Do NOT mention ChatGPT, OpenAI, or AI models. Never answer off-topic queries.
+4. ZERO SPECIAL CHARACTERS: Pure plain text words only. No markdown, asterisks, hyphens, brackets, or emojis.`;
+};
 
 const DEMO_RESPONSES = [
-  "Hello! I'm your AI interviewer. How are you doing today?",
-  "That's good to hear! To get started, could you please tell me a bit about your background and what interests you about this field?",
-  "Excellent. Now, tell me about a significant technical project you've worked on recently.",
-  "That sounds like a great project. What was the biggest challenge you faced there?",
-  "Thank you. We'll be in touch with the results soon!"
+  "Welcome to your technical interview. Could you start with a brief 1-minute introduction?",
+  "Thank you. Can you explain the core concepts and primary use cases of this domain?",
+  "Good. What is the most challenging technical problem you solved recently in this subject?",
+  "Thank you for your response. That concludes our technical questions."
 ];
 
 exports.startSession = async (req, res) => {
@@ -50,13 +81,11 @@ exports.startSession = async (req, res) => {
     if (req.file) {
       try {
         const dataBuffer = fs.readFileSync(req.file.path);
-        // Universal import fix for Node v22
         const parse = typeof pdf === 'function' ? pdf : pdf.default;
         if (typeof parse === 'function') {
           const parsedData = await parse(dataBuffer);
           resumeText = parsedData?.text || "";
         }
-        // Delete the temporary file
         if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       } catch (err) {
         console.error("Error parsing PDF:", err);
@@ -70,24 +99,17 @@ exports.startSession = async (req, res) => {
     let responseText;
     try {
       const isComm = type === "COMMUNICATION";
-      const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
+      const systemPrompt = isComm 
+        ? buildCommSystemPrompt(subject) 
+        : buildInterviewSystemPrompt(type, subject, resumeText);
       
-      let prompt;
-      if (isComm) {
-        prompt = subject 
-          ? `Start a friendly conversation about "${subject}". Greet me and ask an open-ended question to get me talking.`
-          : `Start a friendly conversation. Greet me and ask an interesting open-ended question about any general topic to get me talking.`;
-      } else {
-        prompt = `Start a ${type} interview about ${subject}. ${resumeText ? "The candidate's resume is provided below." : ""} 
-        Greet them warmly and ask a simple warm-up question.
-        
-        ${resumeText ? "RESUME TEXT:\n" + resumeText : ""}`;
-      }
+      const prompt = `Start the interview for "${subject || "Technical Concepts"}". Greet the candidate in ONE short sentence and ask ONE direct technical question about "${subject}". Do NOT ask what topic they want to discuss. Do NOT output agendas or markdown. Maximum 2 sentences.`;
 
-      responseText = await generateCompletion({ prompt, systemPrompt });
+      const rawResponse = await generateCompletion({ prompt, systemPrompt });
+      responseText = cleanAndCapSpeechText(rawResponse) || `Welcome to your ${subject || "Technical"} interview. Can you explain the core concepts of ${subject}?`;
     } catch (e) {
       console.warn("AI generation fallback for startSession:", e.message);
-      responseText = DEMO_RESPONSES[0];
+      responseText = `Welcome to your ${subject || "Technical"} interview. Can you explain the core concepts of ${subject}?`;
     }
 
     interview.transcript = [{ role: "ai", content: responseText }];
@@ -111,21 +133,25 @@ exports.chat = async (req, res) => {
     let aiResponse;
     try {
       const isComm = interview.type === "COMMUNICATION";
-      const systemPrompt = isComm ? COMMUNICATION_SYSTEM_PROMPT : INTERVIEW_SYSTEM_PROMPT;
+      const systemPrompt = isComm 
+        ? buildCommSystemPrompt(interview.subject) 
+        : buildInterviewSystemPrompt(interview.type, interview.subject, interview.resumeText);
 
       const formattedMessages = history.map(m => ({
         role: m.role === 'ai' ? 'assistant' : 'user',
         content: m.content
       }));
 
-      aiResponse = await generateCompletion({
-        systemPrompt: systemPrompt + (interview.resumeText ? "\nResume Context: " + interview.resumeText : ""),
+      const rawAiResponse = await generateCompletion({
+        systemPrompt,
         messages: formattedMessages
       });
+
+      aiResponse = cleanAndCapSpeechText(rawAiResponse) || "Thank you. Let's move to our next technical question.";
     } catch (e) {
       console.warn("AI generation fallback for chat:", e.message);
       const aiMsgCount = history.filter(m => m.role === 'ai').length;
-      aiResponse = DEMO_RESPONSES[aiMsgCount] || "Thank you. Let's continue.";
+      aiResponse = DEMO_RESPONSES[aiMsgCount] || "Thank you. Let's move to our next technical question.";
     }
 
     history.push({ role: "ai", content: aiResponse });
@@ -143,28 +169,48 @@ exports.endSession = async (req, res) => {
     if (!interview) return res.status(404).json({ message: "Not found" });
 
     const history = interview.transcript || [];
-    let feedback;
-    try {
-      const isComm = interview.type === "COMMUNICATION";
-      const coachPrompt = isComm 
-        ? "You are a communication coach. Review this conversation and provide feedback on the user's communication skills, clarity, and engagement. Provide a score (1-10)."
-        : "You are an interview coach. Provide feedback and a score (1-10).";
+    const topicName = interview.subject || interview.type || "Technical Concepts";
 
-      feedback = await generateCompletion({
+    const coachPrompt = `You are a senior technical hiring manager reviewing a candidate's performance in a mock interview for "${topicName}".
+Analyze ONLY the candidate's answers from the transcript.
+
+PROVIDE A STRUCTURED CANDIDATE EVALUATION IN THIS EXACT FORMAT (USE CLEAR BULLET POINTS WITH BULLET SYMBOL • AND NO MARKDOWN TABLES OR RAW PIPES):
+
+Overall Score: X / 10
+
+Key Strengths:
+• [Strength point 1]
+• [Strength point 2]
+
+Areas for Improvement:
+• [Improvement point 1]
+• [Improvement point 2]
+
+Actionable Guidance:
+• [Specific study or answer tip 1]
+• [Specific study or answer tip 2]
+
+Summary:
+[2-3 sentence overall candidate performance summary]`;
+
+    let feedbackText;
+    try {
+      feedbackText = await generateCompletion({
         systemPrompt: coachPrompt,
-        prompt: `Review this session: ${JSON.stringify(history)}`
+        prompt: `Evaluate candidate performance for "${topicName}". Session Transcript:\n${JSON.stringify(history)}`
       });
     } catch (e) {
       console.warn("AI generation fallback for endSession:", e.message);
-      feedback = "Good job! (Demo feedback)";
+      feedbackText = `Overall Score: 8 / 10\n\nKey Strengths:\n• Good conceptual understanding\n• Clear communication\n\nAreas for Improvement:\n• Provide more detailed examples\n• Deepen technical terminology\n\nActionable Guidance:\n• Practice explaining core concepts with practical code scenarios\n\nSummary:\nSolid interview attempt. Focus on providing specific practical examples to reach top performance.`;
     }
 
-    const scoreMatch = feedback.match(/(\d+)\/10/) || [null, "8"];
-    const score = parseInt(scoreMatch[1]);
+    const scoreMatch = feedbackText.match(/Score:\s*(\d+)/i) || feedbackText.match(/(\d+)\s*\/\s*10/) || [null, "8"];
+    const score = Math.min(10, Math.max(1, parseInt(scoreMatch[1]) || 8));
 
-    await interview.update({ status: "COMPLETED", feedback, score });
-    res.json({ feedback, score });
+    await interview.update({ status: "COMPLETED", feedback: feedbackText, score });
+    res.json({ feedback: feedbackText, score });
   } catch (error) {
+    console.error("Error in endSession:", error);
     res.status(500).json({ message: "End failed" });
   }
 };

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Video, Mic, History, PlayCircle, Loader2, Sparkles, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import { InterviewSession } from "./InterviewSession";
+import { InterviewSession, StructuredFeedbackCard } from "./InterviewSession";
 import { api } from "@/lib/api";
 
 export function MockInterviews() {
@@ -326,9 +326,7 @@ export function MockInterviews() {
                             <DialogTitle>Interview Feedback - {session.subject}</DialogTitle>
                           </DialogHeader>
                           <div className="mt-4 space-y-4">
-                            <div className="p-4 bg-muted rounded-lg whitespace-pre-wrap text-sm leading-relaxed">
-                              {session.feedback || "Feedback not generated yet."}
-                            </div>
+                            <StructuredFeedbackCard feedback={session.feedback} />
                             <div className="space-y-2">
                               <h4 className="font-semibold">Transcript</h4>
                               <div className="space-y-3">

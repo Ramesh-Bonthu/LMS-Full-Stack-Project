@@ -91,9 +91,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 md:flex">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
+      {/* Fixed Sidebar */}
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 md:flex h-screen sticky top-0 overflow-y-auto">
         <Link to="/" className="mb-8 flex items-center gap-2 px-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
@@ -114,7 +114,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 params={{ role, section: item.to || "home" }}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   active
-                    ? "bg-primary-soft text-primary"
+                    ? "bg-primary-soft text-primary font-bold shadow-sm"
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
                 }`}
               >
@@ -127,18 +127,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <button
           onClick={handleLogout}
-          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-sidebar-accent hover:text-destructive"
+          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-destructive"
         >
           <LogOut className="h-4 w-4" />
           Logout
         </button>
       </aside>
 
-      {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-card/60 px-6 py-4 backdrop-blur">
+      {/* Main Content Area (Independent Scrollbar) */}
+      <div className="flex min-w-0 flex-1 flex-col h-screen overflow-y-auto">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card/80 px-6 py-4 backdrop-blur shadow-sm">
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
               {meta.label}
             </div>
             <div className="font-display text-lg font-bold">{meta.tagline}</div>

@@ -343,6 +343,7 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
   const [completedQuizIds, setCompletedQuizIds] = useState<number[]>([]);
   const [submittedAssignIds, setSubmittedAssignIds] = useState<number[]>([]);
   const [mySubmissions, setMySubmissions] = useState<any[]>([]);
+  const [myQuizAttempts, setMyQuizAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch course specific materials, quizzes, and assignments
@@ -369,6 +370,7 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
           // Fetch student's own attempts directly from DB
           const myAttemptsRes = await api.getMyQuizAttempts();
           if (myAttemptsRes.success && Array.isArray(myAttemptsRes.data)) {
+            setMyQuizAttempts(myAttemptsRes.data);
             myAttemptsRes.data.forEach((att: any) => {
               if (att.quizId) {
                 attemptedQIds.push(Number(att.quizId));
@@ -423,6 +425,29 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
 
     fetchWorkspaceData();
   }, [course.id]);
+
+  // Refetch submissions & quiz attempts when switching to analytics tab
+  useEffect(() => {
+    if (activeTab === "analytics") {
+      const refreshAnalytics = async () => {
+        try {
+          const [subsRes, myAttemptsRes] = await Promise.all([
+            api.getSubmissions(),
+            api.getMyQuizAttempts()
+          ]);
+          if (subsRes.success && Array.isArray(subsRes.data)) {
+            setMySubmissions(subsRes.data);
+          }
+          if (myAttemptsRes.success && Array.isArray(myAttemptsRes.data)) {
+            setMyQuizAttempts(myAttemptsRes.data);
+          }
+        } catch (e) {
+          console.error("Failed to refresh analytics scores:", e);
+        }
+      };
+      refreshAnalytics();
+    }
+  }, [activeTab]);
 
   const handleMarkComplete = async (contentId: number) => {
     if (course.completedContentIds?.includes(contentId)) return;
@@ -485,12 +510,18 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
 
   // Add published assignments
   assignmentsList.forEach((a) => {
+    const formattedDeadline = a.deadline
+      ? new Date(a.deadline).toLocaleDateString()
+      : a.createdAt
+      ? new Date(a.createdAt).toLocaleDateString()
+      : "28/08/2026";
+
     unifiedModules.push({
       itemType: "ASSIGNMENT",
       id: a.id,
       assignObj: a,
       title: `${a.title} (Published Assignment)`,
-      subText: `Due: ${a.dueDate || "N/A"} · ${a.totalMarks || 100} Marks`,
+      subText: `Due: ${formattedDeadline} · ${a.totalMarks || 100} Marks`,
     });
   });
 
@@ -818,100 +849,203 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
 
       {/* TAB 4: ANALYTICS */}
       {activeTab === "analytics" && (
-        <Card className="p-6 shadow-soft space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-4">
-            <div>
-              <h3 className="text-base font-bold font-display flex items-center gap-2 text-foreground">
-                <BarChart3 className="h-5 w-5 text-primary" /> Course Performance & Grades Analytics
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Your score performance across assignments in {course.title || course.name}
-              </p>
+        <div className="space-y-6">
+          {/* Card 1: Assignment Performance Analytics */}
+          <Card className="p-6 shadow-soft space-y-6">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <h3 className="text-base font-bold font-display flex items-center gap-2 text-foreground">
+                  <BarChart3 className="h-5 w-5 text-primary" /> Assignment Performance Analytics
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your score performance across assignments in {course.title || course.name}
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full flex items-center gap-1">
+                <Award className="h-3.5 w-3.5" /> Course Completion: {dynamicProgress}%
+              </span>
             </div>
-            <span className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full flex items-center gap-1">
-              <Award className="h-3.5 w-3.5" /> Course Completion: {dynamicProgress}%
-            </span>
-          </div>
 
-          {/* Performance Bar Chart */}
-          <div className="h-72 w-full pt-2">
-            {(() => {
-              const studentSubmittedAssignments = assignmentsList
-                .map((a) => {
-                  const sub = mySubmissions.find((s: any) => String(s.assignmentId) === String(a.id));
-                  const isSubmitted =
-                    Boolean(sub) ||
-                    submittedAssignIds.includes(a.id) ||
-                    Boolean(localStorage.getItem(`assignment_submitted_${a.id}`));
+            {/* Performance Bar Chart */}
+            <div className="h-72 w-full pt-2">
+              {(() => {
+                const studentSubmittedAssignments = assignmentsList
+                  .map((a) => {
+                    const sub = mySubmissions.find((s: any) => 
+                      String(s.assignmentId || s.assignment_id || s.AssignmentId) === String(a.id)
+                    );
+                    const isSubmitted =
+                      Boolean(sub) ||
+                      submittedAssignIds.includes(a.id) ||
+                      Boolean(localStorage.getItem(`assignment_submitted_${a.id}`));
 
-                  const marks = sub && typeof sub.marks === "number" ? Number(sub.marks) : (typeof a.marks === "number" ? Number(a.marks) : 0);
-                  const isGraded = sub ? typeof sub.marks === "number" : typeof a.marks === "number";
+                    const rawMarks = sub?.marks ?? sub?.score ?? sub?.grade;
+                    const hasGradedMarks = sub && sub.status === "GRADED" && rawMarks !== undefined && rawMarks !== null && rawMarks !== "" && Number(rawMarks) >= 0;
+                    const marks = hasGradedMarks ? Number(rawMarks) : 0;
+                    const isGraded = hasGradedMarks;
 
-                  return {
-                    ...a,
-                    isSubmitted,
-                    isGraded,
-                    marks,
-                  };
-                })
-                .filter((a) => a.isSubmitted);
+                    return {
+                      ...a,
+                      isSubmitted,
+                      isGraded,
+                      marks,
+                    };
+                  })
+                  .filter((a) => a.isSubmitted);
 
-              if (studentSubmittedAssignments.length === 0) {
+                if (studentSubmittedAssignments.length === 0) {
+                  return (
+                    <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                      <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                      <p className="text-sm font-semibold text-foreground">No submitted assignment grades yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                        Submit your assignments in the "Assignments" tab to view your score performance analytics after faculty evaluation.
+                      </p>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
-                    <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
-                    <p className="text-sm font-semibold text-foreground">No submitted assignment grades yet.</p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                      Submit your assignments in the "Assignments" tab to view your score performance analytics after faculty evaluation.
-                    </p>
-                  </div>
-                );
-              }
-
-              return (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={studentSubmittedAssignments.map((a) => ({
-                      name: a.title.length > 15 ? `${a.title.slice(0, 15)}...` : a.title,
-                      fullName: a.title,
-                      marks: a.marks,
-                      totalMarks: a.totalMarks || 100,
-                      isGraded: a.isGraded,
-                    }))}
-                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
-                    <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 100]} tickLine={false} />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
-                              <div className="font-bold text-foreground">{data.fullName}</div>
-                              <div className="text-primary font-bold text-sm">
-                                {data.isGraded
-                                  ? `Score: ${data.marks} / ${data.totalMarks} Marks`
-                                  : `Submitted (Pending Evaluation)`}
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={studentSubmittedAssignments.map((a, idx) => {
+                        const name = a.title.toLowerCase().includes("assignment")
+                          ? `Assignment ${idx + 1}`
+                          : a.title.length > 18
+                          ? `${a.title.slice(0, 18)}...`
+                          : a.title;
+                        return {
+                          name,
+                          fullName: a.title,
+                          marks: a.marks,
+                          totalMarks: a.totalMarks || 100,
+                          isGraded: a.isGraded,
+                        };
+                      })}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
+                      <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 100]} tickLine={false} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
+                                <div className="font-bold text-foreground">{data.fullName}</div>
+                                <div className="text-primary font-bold text-sm">
+                                  {data.isGraded
+                                    ? `Score: ${data.marks} / ${data.totalMarks} Marks`
+                                    : `Submitted (Pending Evaluation)`}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="marks" radius={[8, 8, 0, 0]} maxBarSize={55}>
-                      {studentSubmittedAssignments.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "var(--color-primary)" : "#10b981"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              );
-            })()}
-          </div>
-        </Card>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="marks" fill="var(--color-primary)" radius={[8, 8, 0, 0]} maxBarSize={55} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          </Card>
+
+          {/* Card 2: Quiz Performance Analytics */}
+          <Card className="p-6 shadow-soft space-y-6">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <h3 className="text-base font-bold font-display flex items-center gap-2 text-foreground">
+                  <FileQuestion className="h-5 w-5 text-emerald-500" /> Quiz Performance Analytics
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your score performance across attempted quizzes in {course.title || course.name}
+                </p>
+              </div>
+            </div>
+
+            {/* Quiz Performance Bar Chart */}
+            <div className="h-72 w-full pt-2">
+              {(() => {
+                const attemptedQuizzes = quizzesList
+                  .map((q) => {
+                    const att = myQuizAttempts.find((a: any) => String(a.quizId) === String(q.id));
+                    const isDone = Boolean(
+                      att ||
+                      completedQuizIds.includes(q.id) ||
+                      q.status === "COMPLETED" ||
+                      q.completed ||
+                      localStorage.getItem(`quiz_completed_${q.id}`)
+                    );
+                    const marks = att && typeof att.marks === "number" ? Number(att.marks) : (typeof q.marks === "number" ? Number(q.marks) : 0);
+
+                    return {
+                      ...q,
+                      isDone,
+                      marks,
+                    };
+                  })
+                  .filter((q) => q.isDone);
+
+                if (attemptedQuizzes.length === 0) {
+                  return (
+                    <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                      <FileQuestion className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                      <p className="text-sm font-semibold text-foreground">No attempted quiz performance records yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                        Take your course quizzes in the "Quizzes" tab to view your score performance analytics.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={attemptedQuizzes.map((q, idx) => {
+                        const name = q.title.toLowerCase().includes("quiz")
+                          ? `Quiz ${idx + 1}`
+                          : q.title.length > 18
+                          ? `${q.title.slice(0, 18)}...`
+                          : q.title;
+                        return {
+                          name,
+                          fullName: q.title,
+                          marks: q.marks,
+                          totalMarks: q.totalMarks || 20,
+                        };
+                      })}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
+                      <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 20]} tickLine={false} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
+                                <div className="font-bold text-foreground">{data.fullName}</div>
+                                <div className="text-primary font-bold text-sm">
+                                  Score: {data.marks} / {data.totalMarks} Marks
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="marks" fill="var(--color-primary)" radius={[8, 8, 0, 0]} maxBarSize={55} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

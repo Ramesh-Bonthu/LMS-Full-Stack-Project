@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { Loader, CalendarCheck, CheckCircle2, XCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { Loader, CalendarCheck, CheckCircle2, XCircle, ChevronDown, ChevronUp, BookOpen, BarChart3 } from "lucide-react";
 import { type AttendanceRecord, api } from "@/lib/api";
 import { PageHeader, Card } from "../../shared/UIPrimitives";
 
@@ -110,6 +110,22 @@ export function StudentAttendance() {
     );
   });
 
+  // Subject-wise Attendance Bar Chart Data
+  const subjectAttendanceChartData = Object.keys(courseGroupMap).map((cName) => {
+    const group = courseGroupMap[cName];
+    let shortName = cName;
+    if (cName.length > 15) {
+      shortName = `${cName.slice(0, 14)}...`;
+    }
+    return {
+      name: shortName,
+      fullName: cName,
+      attendance: group.rate,
+      totalAttended: group.totalAttended,
+      totalConducted: group.totalConducted,
+    };
+  });
+
   const toggleCourseExpand = (cName: string) => {
     setExpandedCourses((prev) => ({
       ...prev,
@@ -121,58 +137,74 @@ export function StudentAttendance() {
     <>
       <PageHeader title="Attendance Record" subtitle="Track your course attendance and period participation." />
       
-      {/* Top Summary Row (Remains Intact) */}
+      {/* Top Summary Row */}
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="p-6">
-          <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Overall Attendance Rate</div>
-          <div className="mt-2 font-display text-5xl font-bold text-primary">{overall}%</div>
-          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border">
-            <span>Attended Classes:</span>
-            <span className="font-bold text-foreground">{totalAttended} / {totalConducted} Periods</span>
+        <Card className="p-6 flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Overall Attendance Rate</div>
+            <div className="mt-2 font-display text-5xl font-bold text-primary">{overall}%</div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {overall >= 75
-              ? "Great job! You are well above the 75% minimum attendance requirement."
-              : "Warning: Your attendance is below 75%. Please ensure you attend upcoming classes."}
-          </p>
+          <div>
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border">
+              <span>Attended Classes:</span>
+              <span className="font-bold text-foreground">{totalAttended} / {totalConducted} Periods</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {overall >= 75
+                ? "Great job! You are well above the 75% minimum attendance requirement."
+                : "Warning: Your attendance is below 75%. Please ensure you attend upcoming classes."}
+            </p>
+          </div>
         </Card>
 
+        {/* Subject-wise Attendance Percentage Bar Chart */}
         <Card className="lg:col-span-2 p-6">
-          <h3 className="mb-2 font-display text-lg font-bold">Attendance Score Trend</h3>
+          <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
+            <h3 className="font-display text-base font-bold flex items-center gap-2 text-foreground">
+              <BarChart3 className="h-5 w-5 text-primary" /> Subject Attendance Percentage
+            </h3>
+            <span className="text-xs text-muted-foreground font-semibold">
+              {subjectAttendanceChartData.length} Subjects
+            </span>
+          </div>
+
           <div className="h-64">
             {loading ? (
               <div className="flex h-full items-center justify-center">
                 <Loader className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : (
+            ) : subjectAttendanceChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={attendanceData}>
-                  <defs>
-                    <linearGradient id="att" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} domain={[0, 100]} />
+                <BarChart data={subjectAttendanceChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 100]} tickLine={false} />
                   <Tooltip
-                    contentStyle={{
-                      background: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 12,
-                      fontSize: 12,
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
+                            <div className="font-bold text-foreground">{data.fullName}</div>
+                            <div className="text-primary font-bold text-sm">
+                              Attendance: {data.attendance}%
+                            </div>
+                            <div className="text-muted-foreground text-[11px]">
+                              Attended: {data.totalAttended} / {data.totalConducted} Periods
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
                     }}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="var(--color-primary)"
-                    strokeWidth={2}
-                    fill="url(#att)"
-                  />
-                </AreaChart>
+                  <Bar dataKey="attendance" fill="var(--color-primary)" radius={[8, 8, 0, 0]} maxBarSize={55} />
+                </BarChart>
               </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                No subject attendance data available yet.
+              </div>
             )}
           </div>
         </Card>

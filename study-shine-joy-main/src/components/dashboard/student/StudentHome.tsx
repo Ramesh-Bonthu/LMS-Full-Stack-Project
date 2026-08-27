@@ -39,7 +39,28 @@ export function StudentHome() {
         // 2. Fetch Assignments
         const assignmentsRes = await api.getAssignments();
         if (assignmentsRes.success && assignmentsRes.data) {
-          setStudentAssignments(Array.isArray(assignmentsRes.data) ? assignmentsRes.data : []);
+          const list = Array.isArray(assignmentsRes.data) ? assignmentsRes.data : [];
+          // Priority Ordering: PENDING (1) > SUBMITTED (2) > GRADED (3)
+          const getStatusPriority = (st?: string) => {
+            const s = (st || "PENDING").toUpperCase();
+            if (s.includes("PENDING") || s.includes("NOT")) return 1;
+            if (s.includes("SUBMITTED")) return 2;
+            if (s.includes("GRADED")) return 3;
+            return 1;
+          };
+
+          const sortedTop5 = [...list]
+            .sort((a: any, b: any) => {
+              const prioA = getStatusPriority(a.status);
+              const prioB = getStatusPriority(b.status);
+              if (prioA !== prioB) return prioA - prioB;
+              
+              const timeA = new Date(a.deadline || a.submittedAt || 0).getTime();
+              const timeB = new Date(b.deadline || b.submittedAt || 0).getTime();
+              return timeB - timeA;
+            })
+            .slice(0, 5);
+          setStudentAssignments(sortedTop5);
         }
 
         // 3. Fetch Announcements
@@ -82,7 +103,7 @@ export function StudentHome() {
         {[
           { label: "Enrolled courses", value: enrolledCount, icon: PlayCircle },
           { label: "Pending tasks", value: pendingCount, icon: Clock },
-          { label: "Avg. grade", value: "A-", icon: Star },
+          { label: "CGPA", value: "9.35", icon: Star },
         ].map((s) => (
           <Card key={s.label}>
             <div className="flex items-center justify-between">

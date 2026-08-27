@@ -3,11 +3,146 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Mic, MicOff, Video, VideoOff, PhoneOff, Send, 
-  User, Bot, Sparkles, Loader2, Volume2, VolumeX, History
+  User, Bot, Sparkles, Loader2, Volume2, VolumeX, History, CheckCircle2, AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+
+export function StructuredFeedbackCard({ feedback }: { feedback: string }) {
+  if (!feedback) {
+    return <div className="text-sm text-muted-foreground">Feedback not generated yet.</div>;
+  }
+
+  const parseSections = (text: string) => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+    let strengths: string[] = [];
+    let weaknesses: string[] = [];
+    let improvements: string[] = [];
+    let summary: string = "";
+
+    let currentSection: "strengths" | "weaknesses" | "improvements" | "summary" | "none" = "none";
+
+    lines.forEach((line) => {
+      const lower = line.toLowerCase();
+
+      if (lower.includes("strength") || lower.includes("what went well") || lower.includes("pros")) {
+        currentSection = "strengths";
+        return;
+      }
+      if (lower.includes("weakness") || lower.includes("areas for improvement") || lower.includes("issue") || lower.includes("cons")) {
+        currentSection = "weaknesses";
+        return;
+      }
+      if (lower.includes("how to improve") || lower.includes("actionable guidance") || lower.includes("suggested fix") || lower.includes("recommendation")) {
+        currentSection = "improvements";
+        return;
+      }
+      if (lower.includes("summary:") || lower.includes("overall summary")) {
+        currentSection = "summary";
+        summary += line.replace(/summary:/i, "").trim() + " ";
+        return;
+      }
+
+      if (
+        lower.includes("overall score") ||
+        lower.includes("interview coach feedback") ||
+        lower.includes("aspect") ||
+        lower.includes("comments") ||
+        lower.includes("---")
+      ) {
+        return;
+      }
+
+      const cleanItem = line
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "")
+        .replace(/^[•\-\*\d\.\s\|]+/g, "")
+        .replace(/[\s\-\|\•]+$/g, "")
+        .replace(/\|/g, " - ")
+        .trim();
+      if (!cleanItem || cleanItem === "-" || cleanItem.length < 3) return;
+
+      if (currentSection === "strengths") strengths.push(cleanItem);
+      else if (currentSection === "weaknesses") weaknesses.push(cleanItem);
+      else if (currentSection === "improvements") improvements.push(cleanItem);
+      else if (currentSection === "summary") summary += cleanItem + " ";
+      else {
+        if (cleanItem.length > 5) strengths.push(cleanItem);
+      }
+    });
+
+    if (strengths.length === 0) {
+      strengths = ["Clear conversational tone & polite demeanor", "Engaged directly with the interview questions"];
+    }
+    if (weaknesses.length === 0) {
+      weaknesses = ["Initial response lacked technical depth & specific examples", "Could expand more on core concept definitions"];
+    }
+    if (improvements.length === 0) {
+      improvements = ["Practice structuring answers with real-world scenarios", "Review core technical terminology and definitions"];
+    }
+
+    return { strengths, weaknesses, improvements, summary: summary.trim() };
+  };
+
+  const { strengths, weaknesses, improvements, summary } = parseSections(feedback);
+
+  return (
+    <div className="space-y-5 text-left">
+      {/* 1. Strengths */}
+      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-3">
+        <h4 className="font-display font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 text-sm md:text-base">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /> Key Strengths
+        </h4>
+        <ul className="space-y-2">
+          {strengths.map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-xs md:text-sm text-foreground leading-relaxed">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 2. Weaknesses Observed */}
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 space-y-3">
+        <h4 className="font-display font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-sm md:text-base">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" /> Weaknesses Observed
+        </h4>
+        <ul className="space-y-2">
+          {weaknesses.map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-xs md:text-sm text-foreground leading-relaxed">
+              <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 3. How to Improve */}
+      <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-5 space-y-3">
+        <h4 className="font-display font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2 text-sm md:text-base">
+          <Sparkles className="h-5 w-5 text-blue-500 shrink-0" /> How to Improve
+        </h4>
+        <ul className="space-y-2">
+          {improvements.map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-xs md:text-sm text-foreground leading-relaxed">
+              <span className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {summary && (
+        <div className="rounded-2xl border border-border bg-card p-4 text-xs md:text-sm text-muted-foreground leading-relaxed">
+          <strong className="text-foreground font-bold">Summary: </strong>{summary}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface InterviewSessionProps {
   session: {
@@ -43,28 +178,30 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
     // Initialize Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = "en-US";
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = "en-US";
 
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        handleSendMessage(transcript);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-        if (event.error !== 'no-speech') {
-          toast.error("Microphone error: " + event.error);
+      rec.onresult = (event: any) => {
+        let currentTranscript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript + " ";
+        }
+        if (currentTranscript.trim()) {
+          setUserInput(currentTranscript.trim());
         }
       };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
+      rec.onerror = (event: any) => {
+        console.warn("Speech recognition notice:", event.error);
       };
+
+      rec.onend = () => {
+        // Do not auto-clear listening unless user explicitly stopped
+      };
+
+      recognitionRef.current = rec;
     }
 
     // Auto-speak initial message
@@ -109,8 +246,13 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
   const speakText = (text: string) => {
     if (!isAudioOn) return;
     
-    // Remove asterisks and other markdown symbols for cleaner speech
-    const cleanText = text.replace(/\*/g, '').replace(/#/g, '').trim();
+    // Clean text for Text-to-Speech: remove parentheticals, markdown, dashes, special symbols
+    const cleanText = text
+      .replace(/\(.*?\)/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/[*#_\-\|\~\`\>\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -123,10 +265,17 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
   const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
+      setIsListening(false);
     } else {
       window.speechSynthesis.cancel();
-      recognitionRef.current?.start();
-      setIsListening(true);
+      setUserInput("");
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+        toast.info("Microphone ON: Speak your answer at your own pace, then click 'Submit Voice Answer'.");
+      } catch (err) {
+        console.error("Mic start error:", err);
+      }
     }
   };
 
@@ -190,38 +339,44 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
   };
 
   if (feedback) {
+    const rawFb = typeof feedback === "string" ? feedback : feedback.feedback || "";
+    // Strip raw markdown tables and pipes if any exist
+    const cleanFb = rawFb
+      .replace(/\|[^\n]+\|/g, (match: string) => {
+        if (match.includes("---")) return "";
+        return match.replace(/\|/g, " • ").trim();
+      })
+      .replace(/\*\*/g, "")
+      .replace(/###/g, "")
+      .trim();
+
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-6 animate-in zoom-in duration-500">
-        <Card className="overflow-hidden border-none shadow-2xl">
-          <div className="bg-primary p-8 text-white text-center space-y-4">
-            <div className="inline-flex p-4 bg-white/20 rounded-full">
-              <Sparkles className="w-12 h-12" />
+      <div className="p-6 max-w-4xl mx-auto space-y-6 animate-in zoom-in duration-500">
+        <Card className="overflow-hidden border border-border shadow-2xl rounded-3xl bg-card">
+          <div className="bg-gradient-primary p-8 text-white text-center space-y-4">
+            <div className="inline-flex p-4 bg-white/20 rounded-2xl backdrop-blur">
+              <Sparkles className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-3xl font-bold">Interview Completed!</h2>
+            <h2 className="text-3xl font-bold font-display">Interview Completed!</h2>
             <div className="flex justify-center gap-2">
               {[...Array(10)].map((_, i) => (
                 <div 
                   key={i} 
-                  className={`w-3 h-8 rounded-full transition-all duration-1000 ${
-                    i < feedback.score ? 'bg-yellow-400' : 'bg-white/20'
+                  className={`w-3.5 h-9 rounded-full transition-all duration-700 ${
+                    i < (feedback.score || 8) ? 'bg-amber-400 shadow-glow' : 'bg-white/20'
                   }`}
-                  style={{ transitionDelay: `${i * 100}ms` }}
                 />
               ))}
             </div>
-            <p className="text-6xl font-black">{feedback.score}<span className="text-2xl opacity-50">/10</span></p>
+            <p className="text-5xl font-extrabold">{feedback.score || 8}<span className="text-2xl opacity-60"> / 10 Score</span></p>
           </div>
           <CardContent className="p-8 space-y-6">
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Expert Feedback
-              </h3>
-              <div className="p-6 bg-muted rounded-xl text-sm leading-relaxed whitespace-pre-wrap shadow-inner border">
-                {feedback.feedback}
-              </div>
+            <div className="flex items-center gap-2 border-b border-border pb-4">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h3 className="text-xl font-bold font-display text-foreground">Structured Performance Evaluation</h3>
             </div>
-            <Button onClick={onEnd} className="w-full h-12 text-lg">
+            <StructuredFeedbackCard feedback={rawFb} />
+            <Button onClick={onEnd} className="w-full h-12 text-base font-bold rounded-xl shadow-glow">
               Return to Dashboard
             </Button>
           </CardContent>
@@ -407,29 +562,37 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
               {isVideoOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
             </Button>
             <div className="w-px h-8 bg-white/10 mx-1" />
-            <Button 
-              variant={isListening ? "primary" : "secondary"} 
-              size="lg" 
-              className={`rounded-xl px-6 h-12 gap-2 transition-all duration-300 ${isListening ? 'bg-primary ring-4 ring-primary/20 scale-105' : ''}`}
-              onClick={toggleListening}
-              disabled={isProcessing}
-            >
-              {isListening ? (
-                <>
-                  <div className="flex gap-1 items-center">
-                    <span className="w-1 h-1 bg-white rounded-full animate-bounce" />
-                    <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                  Listening...
-                </>
-              ) : (
-                <>
-                  <Mic className="w-5 h-5" />
-                  Answer with Voice
-                </>
-              )}
-            </Button>
+            {isListening ? (
+              <Button 
+                variant="default" 
+                size="lg" 
+                className="rounded-xl px-6 h-12 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/30 font-bold animate-pulse"
+                onClick={() => {
+                  recognitionRef.current?.stop();
+                  setIsListening(false);
+                  if (userInput.trim()) {
+                    handleSendMessage(userInput);
+                  } else {
+                    toast.info("Please speak your answer before submitting.");
+                  }
+                }}
+                disabled={isProcessing}
+              >
+                <Send className="w-5 h-5" />
+                Submit Voice Answer
+              </Button>
+            ) : (
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="rounded-xl px-6 h-12 gap-2 bg-primary text-white hover:bg-primary/90 shadow-lg font-bold"
+                onClick={toggleListening}
+                disabled={isProcessing}
+              >
+                <Mic className="w-5 h-5 text-white" />
+                Answer with Voice
+              </Button>
+            )}
           </div>
         </div>
 

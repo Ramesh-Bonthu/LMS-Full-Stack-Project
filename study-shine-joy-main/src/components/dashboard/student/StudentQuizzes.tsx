@@ -56,10 +56,20 @@ export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
     }
   };
 
+  const [myAttempts, setMyAttempts] = useState<any[]>([]);
+
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const res = await api.getQuizzes();
+      const [res, attemptsRes] = await Promise.all([
+        api.getQuizzes(),
+        api.getMyQuizAttempts()
+      ]);
+
+      if (attemptsRes && attemptsRes.success && Array.isArray(attemptsRes.data)) {
+        setMyAttempts(attemptsRes.data);
+      }
+
       if (res.success && res.data) {
         const allQuizzes = Array.isArray(res.data) ? res.data : [];
         if (course) {
@@ -110,6 +120,11 @@ export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
           });
         } else {
           setResult(res.data);
+        }
+        // Refetch attempts dynamically so last score updates instantly
+        const attemptsRes = await api.getMyQuizAttempts();
+        if (attemptsRes && attemptsRes.success && Array.isArray(attemptsRes.data)) {
+          setMyAttempts(attemptsRes.data);
         }
       } else {
         alert("Failed to submit quiz: " + (res.error || "Unknown error"));
@@ -286,6 +301,7 @@ export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
             setActiveQuiz(null);
             setAnswers({});
             setAutoSubmittedReason(null);
+            fetchQuizzes();
           }}
         >
           Return to Quiz Dashboard
@@ -454,34 +470,76 @@ export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
         </div>
       ) : quizzes.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {quizzes.map((q) => (
-            <Card key={q.id} className="flex flex-col justify-between h-full min-h-[220px]">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Course: {q.courseId || "N/A"}
+          {quizzes.map((q) => {
+            const attempt = myAttempts.find((att: any) => String(att.quizId) === String(q.id));
+            const isCompleted = Boolean(
+              attempt ||
+              q.status === "COMPLETED" ||
+              localStorage.getItem(`quiz_completed_${q.id}`)
+            );
+            const scoreMarks = attempt ? attempt.marks : undefined;
+
+            return (
+              <Card
+                key={q.id}
+                className={`flex flex-col justify-between h-full min-h-[230px] transition-all border ${
+                  isCompleted
+                    ? "border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/15 shadow-sm"
+                    : "border-border bg-card hover:border-primary/40 shadow-soft"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Course: {q.courseId || "N/A"}
+                    </div>
+                    {isCompleted ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Attempted & Completed ✓
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+                        <ShieldCheck className="h-3 w-3" /> Proctored
+                      </span>
+                    )}
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500">
-                    <ShieldCheck className="h-3 w-3" /> Proctored
-                  </span>
+
+                  <div className="font-display text-base font-bold text-foreground line-clamp-2 min-h-[48px] flex items-center leading-snug">
+                    {q.title || "Quiz"}
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground font-semibold">
+                    <span>{q.totalQuestions || (q.questions ? q.questions.length : 0)} questions</span>
+                    <span>·</span>
+                    <span>{q.timeLimit || 15} min</span>
+                  </div>
+
+                  {isCompleted && scoreMarks !== undefined && (
+                    <div className="mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 bg-emerald-500/15 px-3 py-1.5 rounded-xl w-fit border border-emerald-500/20">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Last Score: {scoreMarks} / {q.totalMarks || 20} Marks</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="font-display text-base font-bold text-foreground line-clamp-2 min-h-[48px] flex items-center leading-snug">
-                  {q.title || "Quiz"}
-                </div>
-                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground font-semibold">
-                  <span>{q.totalQuestions || (q.questions ? q.questions.length : 0)} questions</span>
-                  <span>·</span>
-                  <span>{q.timeLimit || 15} min</span>
-                </div>
-              </div>
-
-              <Btn className="mt-5 w-full justify-center shadow-glow" onClick={() => setProctorModalQuiz(q)}>
-                <PlayCircle className="h-4 w-4" />
-                Start quiz
-              </Btn>
-            </Card>
-          ))}
+                {isCompleted ? (
+                  <Btn
+                    variant="soft"
+                    className="mt-5 w-full justify-center bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 font-bold border border-emerald-500/30 shadow-sm"
+                    onClick={() => setProctorModalQuiz(q)}
+                  >
+                    <PlayCircle className="h-4 w-4 text-emerald-600" />
+                    Retake Quiz →
+                  </Btn>
+                ) : (
+                  <Btn className="mt-5 w-full justify-center shadow-glow" onClick={() => setProctorModalQuiz(q)}>
+                    <PlayCircle className="h-4 w-4" />
+                    Start quiz →
+                  </Btn>
+                )}
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-8 text-center">
