@@ -5,33 +5,38 @@ import { Card, StatusPill } from "./UIPrimitives";
 
 export function DynamicCourseCard({ course }: { course: Course }) {
   const color = "from-blue-600 via-indigo-600 to-primary";
-  const progress = course.progress || 0;
+  const rawProg = Number(course.progress) || 0;
+  const progress = Math.min(100, Math.max(0, Math.round(rawProg > 100 ? 100 : rawProg)));
 
   return (
     <motion.div
       whileHover={{ y: -3 }}
-      className="overflow-hidden rounded-2xl border border-border bg-gradient-card shadow-sm hover:shadow-md transition"
+      className="flex flex-col justify-between h-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition"
     >
-      <div className={`h-20 bg-gradient-to-br ${color}`} />
-      <div className="p-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {course.code || "COURSE"}
-        </div>
-        <div className="mt-0.5 font-semibold leading-snug">{course.name || course.title}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          {course.facultyName || "Faculty"}
-        </div>
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-semibold text-primary">{progress}%</span>
+      <div>
+        <div className={`h-20 bg-gradient-to-br ${color}`} />
+        <div className="p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {course.code || "COURSE"}
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-gradient-primary transition-all"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="mt-1 font-bold leading-snug line-clamp-2 min-h-[2.5rem] flex items-center text-foreground">
+            {course.name || course.title}
           </div>
+          <div className="mt-1 text-xs text-muted-foreground font-medium">
+            {course.facultyName || "Faculty User"}
+          </div>
+        </div>
+      </div>
+      <div className="p-4 pt-0">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground font-medium">Progress</span>
+          <span className="font-bold text-primary">{progress}%</span>
+        </div>
+        <div className="mt-1.5 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
     </motion.div>

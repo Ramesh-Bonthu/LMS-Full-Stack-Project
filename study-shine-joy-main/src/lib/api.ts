@@ -359,6 +359,10 @@ class ApiClient {
     return this.request(`/courses/${courseId}`, { method: "GET" });
   }
 
+  async getCourseStudents(courseId: string) {
+    return this.request(`/courses/${courseId}/students`, { method: "GET" });
+  }
+
   async createCourse(courseData: any) {
     if (courseData instanceof FormData) {
       return this.requestFormData<Course>("/courses", courseData, "POST");
@@ -456,6 +460,10 @@ class ApiClient {
     return this.request(`/quizzes/${quizId}/attempts`, { method: "GET" });
   }
 
+  async getMyQuizAttempts() {
+    return this.request("/quizzes/my-attempts", { method: "GET" });
+  }
+
   async createQuiz(quizData: Partial<Quiz>) {
     return this.request("/quizzes", {
       method: "POST",
@@ -467,6 +475,13 @@ class ApiClient {
     return this.request(`/quizzes/${quizId}/submit`, {
       method: "POST",
       body: JSON.stringify(answers),
+    });
+  }
+
+  async updateQuizAttempt(attemptId: string, marks: number) {
+    return this.request(`/quizzes/attempts/${attemptId}`, {
+      method: "PUT",
+      body: JSON.stringify({ marks }),
     });
   }
 
@@ -569,10 +584,6 @@ class ApiClient {
     return this.request<{ message: string; course: Course }>(`/courses/${courseId}/content/${contentId}/complete`, {
       method: "POST",
     });
-  }
-
-  async getCourseStudents(courseId: string) {
-    return this.request(`/courses/${courseId}/students`, { method: "GET" });
   }
 
   async getEnrollmentTrend() {

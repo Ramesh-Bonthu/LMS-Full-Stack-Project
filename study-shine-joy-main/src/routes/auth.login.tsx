@@ -7,7 +7,7 @@ import type { Role } from "@/lib/lms-data";
 
 export const Route = createFileRoute("/auth/login")({
   head: () => ({
-    meta: [{ title: "Login - Lumen LMS" }, { name: "description", content: "Login to Lumen LMS" }],
+    meta: [{ title: "Login - Vignan's LMS" }, { name: "description", content: "Login to Vignan's LMS" }],
   }),
   component: LoginPage,
 });
@@ -100,7 +100,7 @@ function LoginPage() {
           <div className="mb-8">
             <h2 className="text-3xl font-bold">Sign in</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Enter your credentials to access Lumen LMS
+              Enter your credentials to access Vignan's LMS
             </p>
           </div>
 

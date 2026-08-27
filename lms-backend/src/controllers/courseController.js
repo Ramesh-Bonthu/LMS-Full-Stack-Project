@@ -376,12 +376,14 @@ exports.getCourseStudents = async (req, res) => {
         attributes: ['id', 'name', 'email', 'role']
       });
     }
+    
     if (students.length === 0) {
       students = await User.findAll({
         where: { role: "STUDENT" },
         attributes: ['id', 'name', 'email', 'role']
       });
     }
+
     return res.json(students);
   } catch (error) {
     console.error("Error fetching course students:", error);

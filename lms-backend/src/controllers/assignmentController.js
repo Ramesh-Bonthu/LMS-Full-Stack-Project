@@ -199,8 +199,11 @@ exports.gradeSubmission = async (req, res) => {
   const submission = await Submission.findByPk(req.params.id);
   if (!submission) return res.status(404).json({ message: "Submission not found" });
 
+  const rawMarks = Number(req.body.marks || 0);
+  const finalMarks = Math.min(100, Math.max(0, isNaN(rawMarks) ? 0 : rawMarks));
+
   await submission.update({
-    marks: Number(req.body.marks || 0),
+    marks: finalMarks,
     feedback: req.body.feedback || "",
     status: "GRADED",
   });
@@ -209,7 +212,7 @@ exports.gradeSubmission = async (req, res) => {
   await Notification.create({
     userId: submission.studentId,
     title: "Assignment Graded 📝",
-    message: `Your submission for "${submission.assignmentTitle}" has been graded. Marks: ${req.body.marks}/100.`,
+    message: `Your submission for "${submission.assignmentTitle}" has been graded. Marks: ${finalMarks}/100.`,
     type: "SUCCESS",
   });
 

@@ -64,9 +64,22 @@ export function FacultyAnnouncements({
       const res = await api.getAnnouncements();
       if (res.success && res.data) {
         const all = Array.isArray(res.data) ? res.data : [];
-        if (selectedCourseId) {
-          // Show announcements relevant to selected course or public
-          setItems(all.filter((a: any) => !a.courseId || String(a.courseId) === String(selectedCourseId)));
+        const activeCId = selectedCourseId || (course ? String(course.id) : "");
+
+        if (activeCId) {
+          const targetCourse = course || selectedCourse;
+          const courseCode = (targetCourse?.code || "").toLowerCase().trim();
+          const courseTitle = (targetCourse?.title || targetCourse?.name || "").toLowerCase().trim();
+
+          // Strictly filter announcements belonging to this specific course
+          const courseAnns = all.filter((a: any) => {
+            if (a.courseId && String(a.courseId) === String(activeCId)) return true;
+            const aTitle = (a.title || "").toLowerCase();
+            if (courseCode && aTitle.includes(courseCode)) return true;
+            if (courseTitle && aTitle.includes(courseTitle)) return true;
+            return false;
+          });
+          setItems(courseAnns);
         } else {
           setItems(all);
         }

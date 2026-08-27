@@ -102,7 +102,15 @@ export function StudentQuizzes({ course }: StudentQuizzesProps = {}) {
       };
       const res = await api.submitQuizAttempt(activeQuizRef.current.id.toString(), payload);
       if (res.success) {
-        setResult(res.data);
+        if (reason) {
+          setResult({
+            ...res.data,
+            marks: 0,
+            percentage: 0,
+          });
+        } else {
+          setResult(res.data);
+        }
       } else {
         alert("Failed to submit quiz: " + (res.error || "Unknown error"));
       }

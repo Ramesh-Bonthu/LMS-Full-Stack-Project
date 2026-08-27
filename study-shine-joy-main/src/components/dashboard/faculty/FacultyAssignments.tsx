@@ -553,17 +553,17 @@ export function FacultyAssignments({
                             </button>
                           )}
 
-                          {/* Button 2: Grade & Correction (Enabled ONLY after File is Viewed) */}
+                          {/* Button 2: Grade & Correction (Always enabled if already graded or if file viewed) */}
                           {isSubmitted ? (
                             <Btn
                               onClick={() => handleOpenGradingDialog(stRow)}
-                              disabled={!isFileViewed}
+                              disabled={!isFileViewed && !isGraded}
                               className={`text-xs font-bold px-4 py-2 ${
-                                isFileViewed
+                                isFileViewed || isGraded
                                   ? "shadow-glow"
                                   : "opacity-40 cursor-not-allowed bg-secondary text-muted-foreground"
                               }`}
-                              title={isFileViewed ? "Click to grade & provide feedback" : "Please click 'View Submitted File' first to inspect student work"}
+                              title={isFileViewed || isGraded ? "Click to edit grade & provide feedback" : "Please click 'View Submitted File' first to inspect student work"}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                               {isGraded ? "Edit Grade" : "Grade & Correction"}
@@ -617,9 +617,18 @@ export function FacultyAssignments({
                   min="0"
                   max={selectedAssignmentForDetails?.totalMarks || 100}
                   value={gradingMarks}
-                  onChange={(e) => setGradingMarks(Number(e.target.value))}
-                  className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-ring/40"
+                  onChange={(e) => setGradingMarks(e.target.value === "" ? 0 : Number(e.target.value))}
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-bold outline-none transition ${
+                    gradingMarks > 100 || gradingMarks < 0
+                      ? "border-destructive text-destructive bg-destructive/10 focus:ring-2 focus:ring-destructive/40"
+                      : "border-border bg-card text-primary focus:ring-2 focus:ring-ring/40"
+                  }`}
                 />
+                {(gradingMarks > 100 || gradingMarks < 0) && (
+                  <p className="text-xs font-bold text-destructive flex items-center gap-1.5 mt-1.5 animate-in fade-in">
+                    <AlertCircle className="h-4 w-4" /> Marks must be 100 or less (0 - 100 Marks only)
+                  </p>
+                )}
               </div>
 
               <div>
@@ -639,7 +648,11 @@ export function FacultyAssignments({
                 <Btn variant="soft" onClick={() => setGradingTargetStudent(null)} className="text-xs">
                   Cancel
                 </Btn>
-                <Btn onClick={handleSaveGrade} disabled={submittingGrade} className="text-xs font-bold shadow-glow">
+                <Btn
+                  onClick={handleSaveGrade}
+                  disabled={submittingGrade || gradingMarks > 100 || gradingMarks < 0}
+                  className="text-xs font-bold shadow-glow"
+                >
                   {submittingGrade ? "Saving Grade..." : "Submit Grade & Correction"}
                 </Btn>
               </div>

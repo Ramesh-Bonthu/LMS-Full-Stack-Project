@@ -88,13 +88,8 @@ export function FacultyAttendance({ course }: FacultyAttendanceProps) {
       const res = await api.getCourseStudents(cId);
       let studentList: any[] = [];
 
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         studentList = res.data;
-      } else {
-        const usersRes = await api.getUsers();
-        if (usersRes.success && Array.isArray(usersRes.data)) {
-          studentList = usersRes.data.filter((u: any) => u.role?.toUpperCase() === "STUDENT");
-        }
       }
 
       setStudents(studentList);

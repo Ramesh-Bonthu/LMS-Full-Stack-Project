@@ -43,32 +43,40 @@ exports.generateQuizQuestions = async (req, res) => {
   }
 
   const getFallbackQuiz = () => ({
-    title: `${targetCourseTitle} Quiz`,
+    title: topic ? `${topic} Quiz (${targetCourseTitle})` : `${targetCourseTitle} Quiz`,
     questions: Array.from({ length: Number(count) }).map((_, i) => ({
-      question: `What is a core concept covered in ${targetCourseTitle} (Question ${i + 1})?`,
+      question: `Which fundamental principle governs ${topic || targetCourseTitle} (Question ${i + 1})?`,
       options: [
-        `Primary rule of ${targetCourseTitle}`,
-        `Secondary implementation detail`,
-        `Alternative configuration method`,
-        `Unrelated system module`
+        `Primary mechanism of ${topic || targetCourseTitle}`,
+        `Secondary operational architecture`,
+        `Alternative execution cycle`,
+        `Non-standard memory configuration`
       ],
       correctIndex: 0
     }))
   });
 
   try {
-    const prompt = `You are a senior university professor creating an official exam quiz for the course "${targetCourseTitle}".
+    const topicFocus = topic || targetCourseTitle;
+    const prompt = `You are a senior computer science university professor creating a technical exam quiz for the subject "${targetCourseTitle}".
 
-${courseContentContext ? `CRITICAL MANDATE: Base ALL quiz questions strictly and directly on the following course syllabus and study material:\n${courseContentContext}\n\nEvery question MUST test specific concepts mentioned in the syllabus text above.` : `Generate a technical quiz about "${targetCourseTitle}".`}
+SPECIFIC TOPIC TO TEST: "${topicFocus}"
 
-Create exactly ${count} multiple-choice questions testing key concepts from this course syllabus.
-Return ONLY a raw JSON object with this exact structure:
+STRICT GENERATION MANDATE:
+1. Generate exactly ${count} high-quality, technical multiple-choice questions specifically and directly testing subject concepts of "${topicFocus}".
+2. DO NOT ask meta-questions about the course overview description, file names, or lesson titles (e.g. NEVER ask "What is the title of the first lesson?" or "How is COA characterized in description?").
+3. Every question MUST test real technical concepts, definitions, architecture principles, and formulas for "${topicFocus}".
+4. Provide 4 plausible multiple-choice options (Option A, B, C, D) and specify the 0-indexed integer (0, 1, 2, or 3) for the correct option (correctIndex).
+
+${courseContentContext ? `Reference Context (Use only for technical depth on ${topicFocus}):\n${courseContentContext}\n` : ""}
+
+Return ONLY a valid raw JSON object matching this exact schema:
 {
-  "title": "${targetCourseTitle} Quiz",
+  "title": "${topic ? `${topic} Quiz` : `${targetCourseTitle} Quiz`}",
   "questions": [
     {
-      "question": "Question text derived directly from the syllabus material",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "Clear technical question directly about ${topicFocus}",
+      "options": ["Plausible Option 0", "Plausible Option 1", "Plausible Option 2", "Plausible Option 3"],
       "correctIndex": 0
     }
   ]
@@ -103,7 +111,11 @@ exports.getAllQuizzes = async (req, res) => {
 };
 
 exports.getQuizById = async (req, res) => {
-  const quiz = await Quiz.findByPk(req.params.id);
+  const quizId = Number(req.params.id);
+  if (isNaN(quizId)) {
+    return res.status(400).json({ message: "Invalid Quiz ID format" });
+  }
+  const quiz = await Quiz.findByPk(quizId);
   if (!quiz) return res.status(404).json({ message: "Quiz not found" });
   return res.json(quiz);
 };
@@ -163,13 +175,15 @@ exports.submitQuiz = async (req, res) => {
 
   const answers = req.body.answers || req.body;
   const tabSwitches = Number(req.body.tabSwitches || 0);
-  const malpractice = Boolean(req.body.malpractice || tabSwitches > 0);
+  const malpractice = Boolean(req.body.malpractice || req.body.autoSubmitted || tabSwitches > 0);
 
   let marks = 0;
   const totalMarks = Number(quiz.totalMarks || 20);
   const questions = quiz.questions || [];
 
-  if (questions.length > 0) {
+  if (malpractice) {
+    marks = 0; // STRICT ZERO MARKS FOR MALPRACTICE!
+  } else if (questions.length > 0) {
     const marksPerQuestion = totalMarks / questions.length;
     questions.forEach((q, idx) => {
       const studentAnswer = typeof answers[idx] !== 'undefined' ? answers[idx] : null;
@@ -225,12 +239,18 @@ exports.getQuizAttempts = async (req, res) => {
     const enriched = uniqueAttempts.map(a => {
       const student = userMap[a.studentId];
       const isMalpractice = Boolean(a.malpractice || (a.tabSwitches && a.tabSwitches > 0));
+      const finalMarks = isMalpractice ? 0 : Number(a.marks || 0);
+      const totalM = 20; // Default total marks baseline if not set
+      const percent = isMalpractice ? 0 : Math.round((finalMarks / totalM) * 100);
+
       return {
         ...a.toJSON(),
         studentId: a.studentId,
         studentName: student ? student.name : `Student #${a.studentId}`,
         studentEmail: student ? student.email : "",
         malpractice: isMalpractice,
+        marks: finalMarks,
+        percentage: percent,
         tabSwitches: a.tabSwitches || 0,
       };
     });
@@ -239,5 +259,39 @@ exports.getQuizAttempts = async (req, res) => {
   } catch (err) {
     console.error("Error fetching quiz attempts:", err.message);
     return res.status(500).json({ message: "Error fetching quiz attempts", error: err.message });
+  }
+};
+
+exports.getMyQuizAttempts = async (req, res) => {
+  try {
+    const studentId = req.user.userId || req.user.id;
+    const attempts = await QuizAttempt.findAll({
+      where: { studentId },
+      order: [["id", "DESC"]]
+    });
+    return res.json(attempts);
+  } catch (err) {
+    console.error("Error fetching my quiz attempts:", err.message);
+    return res.status(500).json({ message: "Error fetching my quiz attempts" });
+  }
+};
+
+exports.updateQuizAttemptMarks = async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    const { marks } = req.body;
+    const attempt = await QuizAttempt.findByPk(attemptId);
+    if (!attempt) return res.status(404).json({ message: "Quiz attempt not found" });
+
+    const newMarks = Math.min(20, Math.max(0, Number(marks || 0)));
+    await attempt.update({
+      marks: newMarks,
+      malpractice: false
+    });
+
+    return res.json({ success: true, attempt });
+  } catch (err) {
+    console.error("Error updating quiz attempt marks:", err.message);
+    return res.status(500).json({ message: "Error updating quiz attempt marks" });
   }
 };

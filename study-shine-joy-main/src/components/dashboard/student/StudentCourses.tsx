@@ -38,6 +38,11 @@ type CourseTab = "modules" | "quizzes" | "assignments" | "analytics";
 export function StudentCourses() {
   const { user } = useAuth();
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [allQuizzes, setAllQuizzes] = useState<Quiz[]>([]);
+  const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
+  const [myAttemptedQuizIds, setMyAttemptedQuizIds] = useState<number[]>([]);
+  const [mySubmittedAssignIds, setMySubmittedAssignIds] = useState<number[]>([]);
+  const [allCourseContentMap, setAllCourseContentMap] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -47,10 +52,48 @@ export function StudentCourses() {
     try {
       setLoading(true);
       const res = await api.getCourses();
+      let courses: Course[] = [];
       if (res.success && res.data) {
-        const courses = Array.isArray(res.data) ? res.data : [];
+        courses = Array.isArray(res.data) ? res.data : [];
         setAllCourses(courses);
       }
+
+      // Fetch quizzes, assignments, and student attempts/submissions to compute real-time progress
+      const quizRes = await api.getQuizzes();
+      if (quizRes.success && quizRes.data) {
+        setAllQuizzes(Array.isArray(quizRes.data) ? quizRes.data : []);
+      }
+
+      const assignRes = await api.getAssignments();
+      if (assignRes.success && assignRes.data) {
+        setAllAssignments(Array.isArray(assignRes.data) ? assignRes.data : []);
+      }
+
+      const myAttRes = await api.getMyQuizAttempts();
+      if (myAttRes.success && Array.isArray(myAttRes.data)) {
+        const qIds = myAttRes.data.map((att: any) => Number(att.quizId)).filter(Boolean);
+        setMyAttemptedQuizIds(qIds);
+      }
+
+      const subsRes = await api.getSubmissions();
+      if (subsRes.success && Array.isArray(subsRes.data)) {
+        const aIds = subsRes.data.map((sub: any) => Number(sub.assignmentId)).filter(Boolean);
+        setMySubmittedAssignIds(aIds);
+      }
+
+      // Fetch exact content files for enrolled courses to ensure matching module item counts
+      const contentMap: Record<number, any[]> = {};
+      for (const c of courses) {
+        try {
+          const cRes = await api.getCourseContent(c.id.toString());
+          if (cRes.success && Array.isArray(cRes.data)) {
+            contentMap[c.id] = cRes.data;
+          }
+        } catch (e) {
+          // ignore error
+        }
+      }
+      setAllCourseContentMap(contentMap);
     } catch (error) {
       console.error("Error fetching courses:", error);
     } finally {
@@ -87,6 +130,49 @@ export function StudentCourses() {
     return Array.isArray(c.enrolledStudentIds) && c.enrolledStudentIds.some((id) => String(id) === String(uId));
   };
 
+  // Compute real-time dynamic course progress percentage using identical module structure
+  const getRealtimeCourseProgress = (c: Course) => {
+    const cIdStr = c.id.toString();
+    const cContent = allCourseContentMap[c.id] || [];
+    const cQuizzes = allQuizzes.filter((q: any) => String(q.courseId) === cIdStr);
+    const cAssigns = allAssignments.filter((a: any) => String(a.courseId) === cIdStr);
+
+    const unified: any[] = [];
+    if (c.pdfUrl) {
+      unified.push({ itemType: "SYLLABUS_PDF", id: 999999 });
+    }
+    cContent.forEach((f) => {
+      unified.push({ itemType: "FILE", id: f.id });
+    });
+    cQuizzes.forEach((q) => {
+      unified.push({ itemType: "QUIZ", id: q.id });
+    });
+    cAssigns.forEach((a) => {
+      unified.push({ itemType: "ASSIGNMENT", id: a.id });
+    });
+
+    if (unified.length === 0) return 0;
+
+    let completed = 0;
+    unified.forEach((item) => {
+      if (item.itemType === "SYLLABUS_PDF" || item.itemType === "FILE") {
+        if (c.completedContentIds?.includes(item.id)) {
+          completed++;
+        }
+      } else if (item.itemType === "QUIZ") {
+        if (myAttemptedQuizIds.includes(item.id) || localStorage.getItem(`quiz_completed_${item.id}`)) {
+          completed++;
+        }
+      } else if (item.itemType === "ASSIGNMENT") {
+        if (mySubmittedAssignIds.includes(item.id) || localStorage.getItem(`assignment_submitted_${item.id}`)) {
+          completed++;
+        }
+      }
+    });
+
+    return Math.min(100, Math.max(0, Math.round((completed / unified.length) * 100)));
+  };
+
   const myCourses = allCourses
     .filter(isEnrolled)
     .filter(
@@ -104,7 +190,15 @@ export function StudentCourses() {
     );
 
   if (selectedCourse) {
-    return <StudentCourseWorkspace course={selectedCourse} onBack={() => setSelectedCourse(null)} />;
+    return (
+      <StudentCourseWorkspace
+        course={selectedCourse}
+        onBack={() => {
+          setSelectedCourse(null);
+          fetchCourses();
+        }}
+      />
+    );
   }
 
   return (
@@ -177,7 +271,7 @@ export function StudentCourses() {
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {myCourses.map((c) => (
                 <div key={c.id} onClick={() => setSelectedCourse(c)} className="cursor-pointer relative group">
-                  <DynamicCourseCard course={c} />
+                  <DynamicCourseCard course={{ ...c, progress: getRealtimeCourseProgress(c) }} />
                 </div>
               ))}
             </div>
@@ -246,6 +340,9 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
   const [contentList, setContentList] = useState<any[]>([]);
   const [quizzesList, setQuizzesList] = useState<Quiz[]>([]);
   const [assignmentsList, setAssignmentsList] = useState<Assignment[]>([]);
+  const [completedQuizIds, setCompletedQuizIds] = useState<number[]>([]);
+  const [submittedAssignIds, setSubmittedAssignIds] = useState<number[]>([]);
+  const [mySubmissions, setMySubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch course specific materials, quizzes, and assignments
@@ -261,19 +358,62 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
           setContentList(Array.isArray(contentRes.data) ? contentRes.data : []);
         }
 
-        // 2. Fetch Quizzes for this course
+        // 2. Fetch Quizzes for this course and check student attempts
         const quizRes = await api.getQuizzes();
+        const attemptedQIds: number[] = [];
         if (quizRes.success && quizRes.data) {
           const allQuizzes = Array.isArray(quizRes.data) ? quizRes.data : [];
-          setQuizzesList(allQuizzes.filter((q: any) => String(q.courseId) === cIdStr));
+          const cQuizzes = allQuizzes.filter((q: any) => String(q.courseId) === cIdStr);
+          setQuizzesList(cQuizzes);
+
+          // Fetch student's own attempts directly from DB
+          const myAttemptsRes = await api.getMyQuizAttempts();
+          if (myAttemptsRes.success && Array.isArray(myAttemptsRes.data)) {
+            myAttemptsRes.data.forEach((att: any) => {
+              if (att.quizId) {
+                attemptedQIds.push(Number(att.quizId));
+                localStorage.setItem(`quiz_completed_${att.quizId}`, "true");
+              }
+            });
+          }
+
+          cQuizzes.forEach((q: any) => {
+            if (localStorage.getItem(`quiz_completed_${q.id}`) && !attemptedQIds.includes(q.id)) {
+              attemptedQIds.push(q.id);
+            }
+          });
+        }
+        setCompletedQuizIds(attemptedQIds);
+
+        // 3. Fetch Assignments for this course and student's submissions
+        const assignRes = await api.getAssignments();
+        const subsRes = await api.getSubmissions();
+        const submittedAIds: number[] = [];
+        let userSubs: any[] = [];
+
+        if (subsRes.success && Array.isArray(subsRes.data)) {
+          userSubs = subsRes.data;
+          setMySubmissions(userSubs);
+          userSubs.forEach((sub: any) => {
+            if (sub.assignmentId) {
+              submittedAIds.push(Number(sub.assignmentId));
+              localStorage.setItem(`assignment_submitted_${sub.assignmentId}`, "true");
+            }
+          });
         }
 
-        // 3. Fetch Assignments for this course
-        const assignRes = await api.getAssignments();
         if (assignRes.success && assignRes.data) {
           const allAssign = Array.isArray(assignRes.data) ? assignRes.data : [];
-          setAssignmentsList(allAssign.filter((a: any) => String(a.courseId) === cIdStr));
+          const cAssigns = allAssign.filter((a: any) => String(a.courseId) === cIdStr);
+          setAssignmentsList(cAssigns);
+
+          cAssigns.forEach((a: any) => {
+            if (localStorage.getItem(`assignment_submitted_${a.id}`) && !submittedAIds.includes(a.id)) {
+              submittedAIds.push(a.id);
+            }
+          });
         }
+        setSubmittedAssignIds(submittedAIds);
       } catch (err) {
         console.error("Error loading course workspace:", err);
       } finally {
@@ -361,6 +501,7 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
     }
     if (item.itemType === "QUIZ") {
       return Boolean(
+        completedQuizIds.includes(item.id) ||
         item.quizObj?.status === "COMPLETED" ||
         item.quizObj?.completed ||
         localStorage.getItem(`quiz_completed_${item.id}`)
@@ -368,6 +509,7 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
     }
     if (item.itemType === "ASSIGNMENT") {
       return Boolean(
+        submittedAssignIds.includes(item.id) ||
         item.assignObj?.status === "SUBMITTED" ||
         item.assignObj?.status === "GRADED" ||
         localStorage.getItem(`assignment_submitted_${item.id}`)
@@ -693,48 +835,81 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
 
           {/* Performance Bar Chart */}
           <div className="h-72 w-full pt-2">
-            {assignmentsList.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={assignmentsList.map((a, i) => ({
-                    name: a.title.length > 15 ? `${a.title.slice(0, 15)}...` : a.title,
-                    fullName: a.title,
-                    marks: a.marks ? Number(a.marks) : (i === 0 ? 85 : i === 1 ? 92 : 88),
-                    totalMarks: a.totalMarks || 100,
-                  }))}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 100]} tickLine={false} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
-                            <div className="font-bold text-foreground">{data.fullName}</div>
-                            <div className="text-primary font-bold text-sm">
-                              Score: {data.marks} / {data.totalMarks} Marks
+            {(() => {
+              const studentSubmittedAssignments = assignmentsList
+                .map((a) => {
+                  const sub = mySubmissions.find((s: any) => String(s.assignmentId) === String(a.id));
+                  const isSubmitted =
+                    Boolean(sub) ||
+                    submittedAssignIds.includes(a.id) ||
+                    Boolean(localStorage.getItem(`assignment_submitted_${a.id}`));
+
+                  const marks = sub && typeof sub.marks === "number" ? Number(sub.marks) : (typeof a.marks === "number" ? Number(a.marks) : 0);
+                  const isGraded = sub ? typeof sub.marks === "number" : typeof a.marks === "number";
+
+                  return {
+                    ...a,
+                    isSubmitted,
+                    isGraded,
+                    marks,
+                  };
+                })
+                .filter((a) => a.isSubmitted);
+
+              if (studentSubmittedAssignments.length === 0) {
+                return (
+                  <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                    <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                    <p className="text-sm font-semibold text-foreground">No submitted assignment grades yet.</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                      Submit your assignments in the "Assignments" tab to view your score performance analytics after faculty evaluation.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={studentSubmittedAssignments.map((a) => ({
+                      name: a.title.length > 15 ? `${a.title.slice(0, 15)}...` : a.title,
+                      fullName: a.title,
+                      marks: a.marks,
+                      totalMarks: a.totalMarks || 100,
+                      isGraded: a.isGraded,
+                    }))}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
+                    <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 100]} tickLine={false} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
+                              <div className="font-bold text-foreground">{data.fullName}</div>
+                              <div className="text-primary font-bold text-sm">
+                                {data.isGraded
+                                  ? `Score: ${data.marks} / ${data.totalMarks} Marks`
+                                  : `Submitted (Pending Evaluation)`}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="marks" radius={[8, 8, 0, 0]} maxBarSize={55}>
-                    {assignmentsList.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "var(--color-primary)" : "#10b981"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                No assignments graded yet for analytics display.
-              </div>
-            )}
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="marks" radius={[8, 8, 0, 0]} maxBarSize={55}>
+                      {studentSubmittedAssignments.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "var(--color-primary)" : "#10b981"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </div>
         </Card>
       )}

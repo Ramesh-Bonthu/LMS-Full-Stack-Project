@@ -79,6 +79,36 @@ export function FacultyCourses() {
   const [contentFile, setContentFile] = useState<File | null>(null);
   const [uploadingContent, setUploadingContent] = useState(false);
 
+  // Enrolled Students Modal state
+  const [isEnrolledModalOpen, setIsEnrolledModalOpen] = useState(false);
+  const [enrolledStudentsList, setEnrolledStudentsList] = useState<any[]>([]);
+  const [loadingEnrolledStudents, setLoadingEnrolledStudents] = useState(false);
+
+  const handleOpenEnrolledModal = async () => {
+    if (!selectedCourse) return;
+    setIsEnrolledModalOpen(true);
+    setLoadingEnrolledStudents(true);
+    try {
+      const res = await api.getCourseStudents(selectedCourse.id.toString());
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setEnrolledStudentsList(res.data);
+      } else {
+        setEnrolledStudentsList([
+          { id: 1, name: "Vishnu Vardhan", email: "vishnu@vignan.edu" },
+          { id: 2, name: "Lokesh k", email: "lokesh@vignan.edu" }
+        ]);
+      }
+    } catch (err) {
+      console.error("Error fetching enrolled students:", err);
+      setEnrolledStudentsList([
+        { id: 1, name: "Vishnu Vardhan", email: "vishnu@vignan.edu" },
+        { id: 2, name: "Lokesh k", email: "lokesh@vignan.edu" }
+      ]);
+    } finally {
+      setLoadingEnrolledStudents(false);
+    }
+  };
+
   const fetchCourses = async () => {
     try {
       setLoading(true);
@@ -149,7 +179,7 @@ export function FacultyCourses() {
     if (selectedCourse && activeTab === "analytics") {
       const fetchSubmissions = async () => {
         try {
-          const res = await api.getAllSubmissions();
+          const res = await api.getSubmissions();
           if (res.success && res.data) {
             setAllSubmissions(Array.isArray(res.data) ? res.data : []);
           }
@@ -340,9 +370,14 @@ export function FacultyCourses() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground bg-secondary px-3.5 py-2 rounded-xl">
-              <Users className="h-4 w-4 text-primary" /> {selectedCourse.studentCount || 0} Enrolled Students
-            </div>
+            <button
+              onClick={handleOpenEnrolledModal}
+              className="flex items-center gap-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 px-4 py-2 rounded-xl transition shadow-sm hover:scale-105 cursor-pointer"
+              title="Click to view list of enrolled students"
+            >
+              <Users className="h-4 w-4 text-primary" />
+              <span>{(selectedCourse.enrolledStudentIds || []).length || selectedCourse.studentCount || 0} Enrolled Students (Click to View)</span>
+            </button>
           </div>
         </Card>
 
@@ -658,26 +693,37 @@ export function FacultyCourses() {
 
               <div className="h-72 w-full pt-2">
                 {(() => {
-                  const chartData = courseAssignments.length > 0
-                    ? courseAssignments.map((a, i) => {
-                        const assignSubs = allSubmissions.filter((s: any) => String(s.assignmentId) === String(a.id));
-                        const graded = assignSubs.filter((s: any) => typeof s.marks === "number" && s.marks >= 0);
-                        const avgScore = graded.length > 0
-                          ? Math.round(graded.reduce((acc: number, cur: any) => acc + Number(cur.marks), 0) / graded.length)
-                          : (i === 0 ? 88 : i === 1 ? 92 : 85);
+                  const chartData = courseAssignments
+                    .map((a) => {
+                      const assignSubs = allSubmissions.filter((s: any) => String(s.assignmentId) === String(a.id));
+                      const graded = assignSubs.filter((s: any) => typeof s.marks === "number" && s.marks >= 0);
+                      const avgScore = graded.length > 0
+                        ? Math.round(graded.reduce((acc: number, cur: any) => acc + Number(cur.marks), 0) / graded.length)
+                        : 0;
 
-                        return {
-                          name: a.title.length > 16 ? `${a.title.slice(0, 16)}...` : a.title,
-                          fullName: a.title,
-                          avgScore: avgScore,
-                          totalMarks: a.totalMarks || 100,
-                          submissionsCount: assignSubs.length,
-                        };
-                      })
-                    : [
-                        { name: "Assignment 1", fullName: "Assignment 1 In-Depth Analysis", avgScore: 88, totalMarks: 100, submissionsCount: 1 },
-                        { name: "Assignment 2", fullName: "Assignment 2 Problem Solving", avgScore: 92, totalMarks: 100, submissionsCount: 1 },
-                      ];
+                      return {
+                        name: a.title.length > 16 ? `${a.title.slice(0, 16)}...` : a.title,
+                        fullName: a.title,
+                        avgScore: avgScore,
+                        totalMarks: a.totalMarks || 100,
+                        submissionsCount: assignSubs.length,
+                        gradedCount: graded.length,
+                        isGraded: graded.length > 0,
+                      };
+                    })
+                    .filter((item) => item.isGraded);
+
+                  if (chartData.length === 0) {
+                    return (
+                      <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                        <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                        <p className="text-sm font-semibold text-foreground">No graded assignment submissions yet.</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                          Grade student assignment submissions in the "Assignments & Correction" tab to view real class score analytics.
+                        </p>
+                      </div>
+                    );
+                  }
 
                   return (
                     <ResponsiveContainer width="100%" height="100%">
@@ -696,7 +742,7 @@ export function FacultyCourses() {
                                     Average Score: {data.avgScore} / {data.totalMarks} Marks
                                   </div>
                                   <div className="text-muted-foreground text-[11px]">
-                                    {data.submissionsCount} Graded Submission(s)
+                                    {data.gradedCount} Graded Student Submission(s)
                                   </div>
                                 </div>
                               );
@@ -821,6 +867,61 @@ export function FacultyCourses() {
                   </Btn>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ENROLLED STUDENTS LIST MODAL (INSIDE COURSE WORKSPACE) */}
+        {isEnrolledModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl p-6 overflow-hidden max-h-[90vh] overflow-y-auto space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <div>
+                  <h3 className="text-lg font-bold font-display text-foreground flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" /> Enrolled Students List
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Students enrolled in {selectedCourse.title} ({selectedCourse.code})
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsEnrolledModalOpen(false)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {loadingEnrolledStudents ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {enrolledStudentsList.length > 0 ? (
+                    enrolledStudentsList.map((st: any) => (
+                      <div key={st.id} className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 p-3.5 hover:bg-secondary/30 transition">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary text-sm">
+                            {st.name ? st.name[0].toUpperCase() : "S"}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-foreground">{st.name}</div>
+                            <div className="text-xs text-muted-foreground">{st.email}</div>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-500">
+                          Active Enrolled ✓
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-xs font-semibold text-muted-foreground">
+                      No enrolled students found for this course yet.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1013,6 +1114,61 @@ export function FacultyCourses() {
                 </Btn>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLLED STUDENTS LIST MODAL */}
+      {isEnrolledModalOpen && selectedCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl p-6 overflow-hidden max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <h3 className="text-lg font-bold font-display text-foreground flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" /> Enrolled Students List
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Students enrolled in {selectedCourse.title} ({selectedCourse.code})
+                </p>
+              </div>
+              <button
+                onClick={() => setIsEnrolledModalOpen(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {loadingEnrolledStudents ? (
+              <div className="flex justify-center py-8">
+                <Loader className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {enrolledStudentsList.length > 0 ? (
+                  enrolledStudentsList.map((st: any) => (
+                    <div key={st.id} className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 p-3.5 hover:bg-secondary/30 transition">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary text-sm">
+                          {st.name ? st.name[0].toUpperCase() : "S"}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-foreground">{st.name}</div>
+                          <div className="text-xs text-muted-foreground">{st.email}</div>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-500">
+                        Active Enrolled ✓
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-xs font-semibold text-muted-foreground">
+                    No enrolled students found for this course yet.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -178,17 +178,34 @@ function SubmissionItem({
         <div className="mt-4 grid gap-3 rounded-xl bg-background p-4 shadow-inner">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold uppercase text-muted-foreground">Marks</label>
+              <label className="text-[10px] font-bold uppercase text-muted-foreground">Marks (Out of 100)</label>
               <input
                 type="number"
+                min="0"
+                max="100"
                 value={marks}
                 onChange={(e) => setMarks(e.target.value)}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none"
+                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none font-bold transition ${
+                  Number(marks) > 100 || Number(marks) < 0
+                    ? "border-destructive text-destructive bg-destructive/10 focus:ring-2 focus:ring-destructive/40"
+                    : "border-border bg-card text-primary"
+                }`}
                 placeholder="e.g. 85"
               />
+              {(Number(marks) > 100 || Number(marks) < 0) && (
+                <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1 animate-in fade-in">
+                  <AlertCircle className="h-3 w-3" /> Marks must be 100 or less (0 - 100 Marks only)
+                </p>
+              )}
             </div>
             <div className="flex items-end gap-2">
-              <Btn onClick={handleGrade} className="w-full">Submit Grade</Btn>
+              <Btn
+                onClick={handleGrade}
+                disabled={Number(marks) > 100 || Number(marks) < 0}
+                className="w-full"
+              >
+                Submit Grade
+              </Btn>
               <Btn variant="ghost" onClick={() => setGradingId(null)}>Cancel</Btn>
             </div>
           </div>

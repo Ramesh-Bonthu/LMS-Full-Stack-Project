@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { GraduationCap, Sparkles, BookOpen, ClipboardList, Trophy, ArrowRight } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardList, Trophy, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { roleMeta, type Role } from "@/lib/lms-data";
 import { useEffect } from "react";
@@ -34,7 +34,7 @@ export function Landing() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-display text-xl font-bold">Lumen LMS</span>
+          <span className="font-display text-xl font-bold">Vignan's LMS</span>
         </div>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#features" className="hover:text-foreground transition">
@@ -65,14 +65,6 @@ export function Landing() {
 
       {/* Hero */}
       <section className="mx-auto max-w-7xl px-6 pt-12 pb-24 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-accent" />A calmer way to learn, teach and manage
-        </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 18 }}
@@ -190,7 +182,7 @@ export function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Lumen LMS · Crafted for calm learning
+        © {new Date().getFullYear()} Vignan's LMS · Crafted for calm learning
       </footer>
     </div>
   );

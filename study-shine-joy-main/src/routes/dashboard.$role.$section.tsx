@@ -25,11 +25,11 @@ export const Route = createFileRoute("/dashboard/$role/$section")({
   head: ({ params }) => ({
     meta: [
       {
-        title: `${params.role[0].toUpperCase()}${params.role.slice(1)} dashboard — Lumen LMS`,
+        title: `${params.role[0].toUpperCase()}${params.role.slice(1)} dashboard — Vignan's LMS`,
       },
       {
         name: "description",
-        content: `Lumen LMS ${params.role} workspace.`,
+        content: `Vignan's LMS ${params.role} workspace.`,
       },
     ],
   }),

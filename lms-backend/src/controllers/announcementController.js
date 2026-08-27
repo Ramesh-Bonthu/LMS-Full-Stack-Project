@@ -7,23 +7,21 @@ function serializeAnnouncement(a) {
     createdDate = new Date(a.createdAt + "Z");
   }
   const diffMs = Date.now() - createdDate.getTime();
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
   let formattedTime = "Just now";
 
   if (diffMs < 600000) {
     formattedTime = "Just now";
+  } else if (diffMin < 60) {
+    const tenMinChunk = Math.floor(diffMin / 10) * 10;
+    formattedTime = `${tenMinChunk}m ago`;
+  } else if (diffHours < 24) {
+    formattedTime = `${diffHours}h ago`;
   } else {
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMin / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMin < 60) {
-      const tenMinChunk = Math.floor(diffMin / 10) * 10;
-      formattedTime = `${tenMinChunk}m ago`;
-    } else if (diffHours < 24) {
-      formattedTime = `${diffHours}h ago`;
-    } else {
-      formattedTime = `${diffDays}d ago`;
-    }
+    formattedTime = `${diffDays}d ago`;
   }
 
   return {
@@ -31,6 +29,7 @@ function serializeAnnouncement(a) {
     title: a.title,
     body: a.body,
     audience: a.audience,
+    courseId: a.courseId || null,
     createdAt: a.createdAt,
     time: formattedTime,
     isNew: diffHours <= 24,
@@ -71,6 +70,7 @@ exports.createAnnouncement = async (req, res) => {
       title: req.body.title || "Untitled announcement",
       body: req.body.body || "",
       audience: audienceValue,
+      courseId: req.body.courseId ? Number(req.body.courseId) : null,
     });
     return res.status(201).json(serializeAnnouncement(announcement.toJSON()));
   } catch (err) {

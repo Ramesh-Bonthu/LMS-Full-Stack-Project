@@ -99,7 +99,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <div className="font-display text-base font-bold leading-tight">Lumen LMS</div>
+            <div className="font-display text-base font-bold leading-tight">Vignan's LMS</div>
             <div className="text-[11px] text-muted-foreground">{meta.label} workspace</div>
           </div>
         </Link>

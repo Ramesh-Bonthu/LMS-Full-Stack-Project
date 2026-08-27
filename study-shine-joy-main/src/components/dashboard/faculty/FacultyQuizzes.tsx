@@ -15,7 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  Eye
+  Eye,
+  Edit3
 } from "lucide-react";
 import { type Course, api } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
@@ -66,6 +67,44 @@ export function FacultyQuizzes({ course, isAddQuizOpen = false, onCloseModal, on
   const [selectedQuizForDetails, setSelectedQuizForDetails] = useState<any | null>(null);
   const [quizAttempts, setQuizAttempts] = useState<any[]>([]);
   const [loadingAttempts, setLoadingAttempts] = useState(false);
+  const [editingQuizAttempt, setEditingQuizAttempt] = useState<any | null>(null);
+  const [editingQuizMarks, setEditingQuizMarks] = useState<number>(0);
+  const [submittingQuizMarks, setSubmittingQuizMarks] = useState(false);
+
+  const handleOpenEditQuizMarks = (attempt: any) => {
+    setEditingQuizAttempt(attempt);
+    setEditingQuizMarks(attempt.marks >= 0 ? attempt.marks : 0);
+  };
+
+  const handleSaveQuizMarks = async () => {
+    if (!editingQuizAttempt) return;
+    if (editingQuizMarks > 20 || editingQuizMarks < 0) {
+      alert("Marks must be between 0 and 20.");
+      return;
+    }
+    setSubmittingQuizMarks(true);
+    try {
+      const res = await api.updateQuizAttempt(editingQuizAttempt.id.toString(), editingQuizMarks);
+      if (res.success) {
+        alert("Quiz marks updated successfully!");
+        setQuizAttempts((prev) =>
+          prev.map((att) =>
+            att.id === editingQuizAttempt.id
+              ? { ...att, marks: editingQuizMarks, malpractice: false }
+              : att
+          )
+        );
+        setEditingQuizAttempt(null);
+      } else {
+        alert("Failed to update quiz marks: " + res.error);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error: " + err.message);
+    } finally {
+      setSubmittingQuizMarks(false);
+    }
+  };
   const [showQuizQuestions, setShowQuizQuestions] = useState(false);
   const [expandedStudentId, setExpandedStudentId] = useState<number | null>(null);
 
@@ -496,6 +535,10 @@ export function FacultyQuizzes({ course, isAddQuizOpen = false, onCloseModal, on
                 <div className="space-y-3">
                   {quizAttempts.map((attempt) => {
                     const isMalpractice = Boolean(attempt.malpractice || attempt.tabSwitches > 0);
+                    const totalM = selectedQuizForDetails.totalMarks || 20;
+                    const finalMarks = isMalpractice ? 0 : Number(attempt.marks || 0);
+                    const finalPercentage = isMalpractice ? 0 : Math.round((finalMarks / totalM) * 100);
+
                     return (
                       <div
                         key={attempt.id}
@@ -530,13 +573,23 @@ export function FacultyQuizzes({ course, isAddQuizOpen = false, onCloseModal, on
                           </div>
                         </div>
 
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-primary">
-                            {attempt.marks} / {selectedQuizForDetails.totalMarks || 20} Marks
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <div className={`text-sm font-bold ${isMalpractice ? "text-destructive" : "text-primary"}`}>
+                              {finalMarks} / {totalM} Marks
+                            </div>
+                            <div className="text-[11px] font-semibold text-muted-foreground">
+                              Last Attempt Score: {finalPercentage}%
+                            </div>
                           </div>
-                          <div className="text-[11px] font-semibold text-muted-foreground">
-                            Score: {attempt.percentage || Math.round((attempt.marks / (selectedQuizForDetails.totalMarks || 20)) * 100)}%
-                          </div>
+                          <Btn
+                            size="sm"
+                            variant="soft"
+                            onClick={() => handleOpenEditQuizMarks(attempt)}
+                            className="text-xs font-bold px-3 py-1.5 shadow-sm"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" /> Edit Marks
+                          </Btn>
                         </div>
                       </div>
                     );
@@ -547,6 +600,67 @@ export function FacultyQuizzes({ course, isAddQuizOpen = false, onCloseModal, on
                   No students have attempted this quiz yet.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT QUIZ MARKS MODAL */}
+      {editingQuizAttempt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 overflow-hidden space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-bold font-display text-foreground flex items-center gap-2">
+                <Edit3 className="h-4 w-4 text-primary" /> Edit Quiz Attempt Marks
+              </h3>
+              <button
+                onClick={() => setEditingQuizAttempt(null)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Updating score for <span className="font-bold text-foreground">{editingQuizAttempt.studentName}</span>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Award Quiz Marks (Out of 20)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={editingQuizMarks}
+                  onChange={(e) => setEditingQuizMarks(e.target.value === "" ? 0 : Number(e.target.value))}
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm font-bold outline-none transition ${
+                    editingQuizMarks > 20 || editingQuizMarks < 0
+                      ? "border-destructive text-destructive bg-destructive/10 focus:ring-2 focus:ring-destructive/40"
+                      : "border-border bg-card text-primary focus:ring-2 focus:ring-ring/40"
+                  }`}
+                />
+                {(editingQuizMarks > 20 || editingQuizMarks < 0) && (
+                  <p className="text-xs font-bold text-destructive flex items-center gap-1.5 mt-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Marks must be 20 or less (0 - 20 Marks only)
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Btn variant="soft" onClick={() => setEditingQuizAttempt(null)} className="text-xs">
+                  Cancel
+                </Btn>
+                <Btn
+                  onClick={handleSaveQuizMarks}
+                  disabled={submittingQuizMarks || editingQuizMarks > 20 || editingQuizMarks < 0}
+                  className="text-xs font-bold shadow-glow"
+                >
+                  {submittingQuizMarks ? "Saving Marks..." : "Update Quiz Marks"}
+                </Btn>
+              </div>
             </div>
           </div>
         </div>
