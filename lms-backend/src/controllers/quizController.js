@@ -145,7 +145,7 @@ exports.createQuiz = async (req, res) => {
     if (enrolledIds.length > 0) {
       const notifications = enrolledIds.map(studentId => ({
         userId: studentId,
-        title: "New Quiz Available 🧠",
+        title: "New Quiz Available",
         message: `A new quiz "${quiz.title}" has been created for ${course.title}. Good luck!`,
         type: "INFO",
         isRead: false,

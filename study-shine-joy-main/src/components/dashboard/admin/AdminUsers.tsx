@@ -215,7 +215,6 @@ export function AdminUsers() {
                   <th className="pb-3 font-semibold">Role</th>
                   <th className="pb-3 font-semibold">Account Status</th>
                   <th className="pb-3 font-semibold">Joined Date</th>
-                  <th className="pb-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,24 +253,6 @@ export function AdminUsers() {
 
                       <td className="py-3.5 text-muted-foreground font-medium">
                         {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : "Recently"}
-                      </td>
-
-                      <td className="py-3.5 text-right">
-                        <div className="inline-flex items-center gap-2">
-                          <Btn
-                            variant="soft"
-                            className="px-3 py-1 text-xs font-bold rounded-full"
-                            onClick={() => handleApprove(entry.id)}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Approve
-                          </Btn>
-                          <button
-                            onClick={() => handleReject(entry.id)}
-                            className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive hover:bg-destructive/20 transition"
-                          >
-                            <XCircle className="h-3.5 w-3.5" /> Reject
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );

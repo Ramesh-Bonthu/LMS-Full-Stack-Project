@@ -51,6 +51,10 @@ const MockInterview = require("./MockInterview")(sequelize);
 // Associations
 Course.hasMany(CourseContent, { foreignKey: "courseId", as: "contents" });
 CourseContent.belongsTo(Course, { foreignKey: "courseId" });
+Resource.belongsTo(User, { foreignKey: "facultyId", as: "faculty" });
+User.hasMany(Resource, { foreignKey: "facultyId", as: "resources" });
+Resource.belongsTo(Course, { foreignKey: "courseId", as: "course" });
+Course.hasMany(Resource, { foreignKey: "courseId", as: "resources" });
 
 module.exports = {
   sequelize,

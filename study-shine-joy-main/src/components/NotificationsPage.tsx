@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Megaphone, Bell, CheckCircle2, AlertCircle, Info, Loader } from "lucide-react";
-import { type Announcement, type Notification, api } from "@/lib/api";
+import { type Announcement, type Notification, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "./shared/UIPrimitives";
 import { toast } from "sonner";
+
+const cleanTitle = (str: string) =>
+  (str || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, "").trim();
 
 export function NotificationsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -101,7 +104,7 @@ export function NotificationsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="font-semibold text-sm">{n.title}</div>
+                        <div className="font-semibold text-sm">{cleanTitle(n.title)}</div>
                         <span className="text-[10px] text-muted-foreground">
                           {new Date(n.createdAt).toLocaleDateString()}
                         </span>
@@ -145,8 +148,10 @@ export function NotificationsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="font-semibold text-sm">{a.title}</div>
-                        <span className="text-[10px] text-muted-foreground">{a.time}</span>
+                        <div className="font-semibold text-sm">{cleanTitle(a.title)}</div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatRelativeTime(a.createdAt) || a.time}
+                        </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{a.body}</p>
                     </div>

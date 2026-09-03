@@ -12,13 +12,16 @@ async function verifyToken(req, res, next) {
   const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findByPk(decoded.userId);
+    const userId = decoded.userId || decoded.id;
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
     req.user = {
       ...decoded,
+      id: user.id,
+      userId: user.id,
       name: user.name,
       active: user.active,
       role: user.role,

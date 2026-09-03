@@ -136,11 +136,15 @@ export function ProfilePage({ role }: { role: Role }) {
             </div>
             <h2 className="text-xl font-bold">
               {isEditing ? (
-                <input 
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-secondary/50 px-3 py-1 text-center outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                <div className="relative">
+                  <input 
+                    value={editName}
+                    disabled={true}
+                    readOnly={true}
+                    title="Faculty name is fixed and cannot be modified"
+                    className="w-full rounded-lg border border-border/80 bg-secondary/40 px-3 py-1 text-center font-bold text-foreground/80 cursor-not-allowed outline-none select-none"
+                  />
+                </div>
               ) : (
                 profile?.name
               )}

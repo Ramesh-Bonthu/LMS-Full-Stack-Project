@@ -19,7 +19,15 @@ export function formatRelativeTime(dateInput?: string | Date | number): string {
 
   if (diffMin < 60) return `${Math.floor(diffMin / 10) * 10}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
+  if (diffDays < 30) return `${diffDays}d ago`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) {
+    return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+  }
+
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
 }
 
 export interface ApiResponse<T> {
@@ -143,7 +151,11 @@ export interface Resource {
   type: "PDF" | "VIDEO" | "LINK" | "DOC";
   url: string;
   facultyId?: number;
+  facultyName?: string;
+  faculty?: { id: number; name: string; email: string };
   courseId?: number;
+  courseName?: string;
+  course?: { id: number; title: string; code?: string };
   category?: string;
   createdAt?: string;
 }
@@ -509,6 +521,29 @@ class ApiClient {
     });
   }
 
+  async updateAnnouncement(id: number, announcementData: Partial<Announcement>) {
+    const res = await this.request<Announcement>(`/announcements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(announcementData),
+    });
+    if (res.success) return res;
+
+    return this.request<Announcement>("/announcements", {
+      method: "POST",
+      body: JSON.stringify({ id, ...announcementData, _action: "UPDATE" }),
+    });
+  }
+
+  async deleteAnnouncement(id: number) {
+    const res = await this.request(`/announcements/${id}`, { method: "DELETE" });
+    if (res.success) return res;
+
+    return this.request("/announcements", {
+      method: "POST",
+      body: JSON.stringify({ id, _action: "DELETE" }),
+    });
+  }
+
   // NOTIFICATION ENDPOINTS
   async getNotifications() {
     return this.request<Notification[]>("/notifications", { method: "GET" });
@@ -531,7 +566,10 @@ class ApiClient {
     return this.request<Resource[]>("/resources", { method: "GET" });
   }
 
-  async createResource(data: Partial<Resource>) {
+  async createResource(data: Partial<Resource> | FormData) {
+    if (data instanceof FormData) {
+      return this.requestFormData<Resource>("/resources", data, "POST");
+    }
     return this.request<Resource>("/resources", {
       method: "POST",
       body: JSON.stringify(data),

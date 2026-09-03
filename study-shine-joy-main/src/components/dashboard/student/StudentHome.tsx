@@ -214,7 +214,9 @@ export function StudentHome() {
                     className="rounded-xl border border-border bg-secondary/30 p-3.5 transition hover:border-primary/40 hover:bg-secondary/50"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs font-bold text-foreground line-clamp-1">{n.title}</div>
+                      <div className="text-xs font-bold text-foreground line-clamp-1">
+                        {(n.title || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, "").trim()}
+                      </div>
                       <span className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{n.body}</p>

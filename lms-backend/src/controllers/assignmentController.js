@@ -78,7 +78,7 @@ exports.createAssignment = async (req, res) => {
     if (enrolledIds.length > 0) {
       const notifications = enrolledIds.map(studentId => ({
         userId: studentId,
-        title: "New Assignment Posted 📝",
+        title: "New Assignment Posted",
         message: `A new assignment "${assignment.title}" has been posted for ${course.title}. Deadline: ${assignment.deadline.toLocaleDateString()}.`,
         type: "INFO",
       }));
@@ -168,7 +168,7 @@ exports.submitAssignment = async (req, res) => {
       // Notify faculty
       await Notification.create({
         userId: course.facultyId,
-        title: "All Submissions Received 🎓",
+        title: "All Submissions Received",
         message: `All enrolled students have submitted the assignment "${assignment.title}". You can now start grading.`,
         type: "SUCCESS",
       });
@@ -211,7 +211,7 @@ exports.gradeSubmission = async (req, res) => {
   // Create notification for the student
   await Notification.create({
     userId: submission.studentId,
-    title: "Assignment Graded 📝",
+    title: "Assignment Graded",
     message: `Your submission for "${submission.assignmentTitle}" has been graded. Marks: ${finalMarks}/100.`,
     type: "SUCCESS",
   });

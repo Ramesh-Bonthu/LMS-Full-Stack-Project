@@ -1,12 +1,18 @@
 const { Notification } = require("../models");
 
+const cleanTitle = (str) => (str || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, "").trim();
+
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({
       where: { userId: req.user.userId },
       order: [["createdAt", "DESC"]],
     });
-    return res.json(notifications);
+    const cleaned = notifications.map((n) => {
+      const data = n.toJSON ? n.toJSON() : n;
+      return { ...data, title: cleanTitle(data.title) };
+    });
+    return res.json(cleaned);
   } catch (error) {
     return res.status(500).json({ message: "Error fetching notifications", error: error.message });
   }

@@ -159,7 +159,7 @@ exports.createCourse = async (req, res) => {
       if (admins.length > 0) {
         const notifications = admins.map(admin => ({
           userId: admin.id,
-          title: "New Course Approval Request 🛡️",
+          title: "New Course Approval Request",
           message: `Faculty ${req.user.name} has submitted a new course "${title}" for approval.`,
           type: "WARNING",
           isRead: false
@@ -250,7 +250,7 @@ exports.approveCourse = async (req, res) => {
   // Notify the faculty
   await Notification.create({
     userId: course.facultyId,
-    title: "Course Approved! ✅",
+    title: "Course Approved!",
     message: `Your course "${course.title}" has been approved and is now live for enrollment.`,
     type: "SUCCESS",
     isRead: false
@@ -268,7 +268,7 @@ exports.rejectCourse = async (req, res) => {
   // Notify the faculty
   await Notification.create({
     userId: course.facultyId,
-    title: "Course Approval Update ❌",
+    title: "Course Approval Update",
     message: `Your course "${course.title}" was not approved. Reason: ${req.body.reason || "Not provided"}.`,
     type: "ERROR",
     isRead: false
@@ -304,7 +304,7 @@ exports.addCourseContent = async (req, res) => {
     if (enrolledIds.length > 0) {
       const notifications = enrolledIds.map(studentId => ({
         userId: studentId,
-        title: "New Course Content 📚",
+        title: "New Course Content",
         message: `New content "${content.name}" has been added to your course "${course.title}".`,
         type: "INFO",
         isRead: false
@@ -348,7 +348,7 @@ exports.uploadCourseContent = async (req, res) => {
     if (enrolledIds.length > 0) {
       const notifications = enrolledIds.map(studentId => ({
         userId: studentId,
-        title: "New Course Content 📚",
+        title: "New Course Content",
         message: `New content "${content.name}" has been added to your course "${course.title}".`,
         type: "INFO",
         isRead: false

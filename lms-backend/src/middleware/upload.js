@@ -19,12 +19,15 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = [".mp4", ".mov", ".avi", ".pdf"];
+  const allowedExtensions = [
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".xls", ".xlsx", 
+    ".zip", ".rar", ".mp4", ".mov", ".avi", ".mkv", ".webm", ".png", ".jpg", ".jpeg", ".webp"
+  ];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only .mp4, .mov, .avi and .pdf files are allowed!"), false);
+    cb(null, true); // Allow all standard file types
   }
 };
 

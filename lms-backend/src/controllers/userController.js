@@ -2,7 +2,8 @@ const { User } = require("../models");
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.userId, {
+    const userId = req.user?.userId || req.user?.id;
+    const user = await User.findByPk(userId, {
       attributes: { exclude: ["password", "verificationOtp"] }
     });
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -15,7 +16,8 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, bio, profilePicture, skills, socialLinks } = req.body;
-    const user = await User.findByPk(req.user.userId);
+    const userId = req.user?.userId || req.user?.id;
+    const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     await user.update({
