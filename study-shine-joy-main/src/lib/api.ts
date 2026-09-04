@@ -125,13 +125,26 @@ export interface AttendanceRecord {
   value: number;
 }
 
+export interface AnnouncementReply {
+  id: number | string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt?: string;
+}
+
 export interface Announcement {
   id: number;
   title: string;
   body: string;
-  time: string;
+  time?: string;
   isNew?: boolean;
   audience?: string;
+  courseId?: number;
+  authorName?: string;
+  authorRole?: string;
+  replies?: AnnouncementReply[];
+  createdAt?: string;
 }
 
 export interface Notification {
@@ -476,6 +489,10 @@ class ApiClient {
     return this.request("/quizzes/my-attempts", { method: "GET" });
   }
 
+  async getAllQuizAttempts() {
+    return this.request("/quizzes/all-attempts", { method: "GET" });
+  }
+
   async createQuiz(quizData: Partial<Quiz>) {
     return this.request("/quizzes", {
       method: "POST",
@@ -510,14 +527,22 @@ class ApiClient {
   }
 
   // ANNOUNCEMENTS ENDPOINTS
-  async getAnnouncements() {
-    return this.request("/announcements", { method: "GET" });
+  async getAnnouncements(category?: string) {
+    const query = category ? `?category=${encodeURIComponent(category)}` : "";
+    return this.request(`/announcements${query}`, { method: "GET" });
   }
 
   async createAnnouncement(announcementData: Partial<Announcement>) {
     return this.request("/announcements", {
       method: "POST",
       body: JSON.stringify(announcementData),
+    });
+  }
+
+  async addAnnouncementReply(id: number, body: string, authorName?: string, authorRole?: string) {
+    return this.request(`/announcements/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ body, authorName, authorRole }),
     });
   }
 

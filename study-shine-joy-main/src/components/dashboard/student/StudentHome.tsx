@@ -64,11 +64,12 @@ export function StudentHome() {
         }
 
         // 3. Fetch Announcements
-        const announcementsRes = await api.getAnnouncements();
+        const announcementsRes = await api.getAnnouncements("ANNOUNCEMENT");
         if (announcementsRes.success && announcementsRes.data) {
-          setLatestAnnouncements(
-            Array.isArray(announcementsRes.data) ? announcementsRes.data.slice(0, 4) : []
+          const officialOnly = (Array.isArray(announcementsRes.data) ? announcementsRes.data : []).filter(
+            (a: any) => !a.category || a.category.toUpperCase() === "ANNOUNCEMENT"
           );
+          setLatestAnnouncements(officialOnly.slice(0, 4));
         }
 
         // 4. Fetch Performance Marks Data

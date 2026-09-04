@@ -5,6 +5,7 @@ const { verifyToken, requireRole } = require("../middleware/auth");
 
 // Static routes MUST come before parameterized /:id routes
 router.get("/my-attempts", verifyToken, quizController.getMyQuizAttempts);
+router.get("/all-attempts", verifyToken, requireRole("FACULTY", "ADMIN"), quizController.getAllQuizAttempts);
 router.post("/generate", verifyToken, requireRole("FACULTY", "ADMIN"), quizController.generateQuizQuestions);
 router.get("/", verifyToken, quizController.getAllQuizzes);
 router.post("/", verifyToken, requireRole("FACULTY", "ADMIN"), quizController.createQuiz);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Megaphone, Plus, X, Calendar, Users, FileText, Bell, Sparkles } from "lucide-react";
+import { Megaphone, Plus, X, Calendar, Users, FileText, Bell } from "lucide-react";
 import { type Announcement, type Course, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 
@@ -17,25 +17,17 @@ export function FacultyAnnouncements({
   onAnnouncementCreated,
 }: FacultyAnnouncementsProps) {
   const [items, setItems] = useState<Announcement[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(course ? String(course.id) : "");
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(course || null);
   const [loading, setLoading] = useState(false);
-
-  // Modal toggle state
   const [isModalOpen, setIsModalOpen] = useState(isAddAnnouncementOpen);
 
-  // Form states for Add Announcement Modal
   const [title, setTitle] = useState(course ? `${course.title} Update` : "");
   const [body, setBody] = useState("");
-  const [audience, setAudience] = useState("STUDENTS");
   const [submitting, setSubmitting] = useState(false);
 
-  // Sync prop changes
   useEffect(() => {
     if (course) {
       setSelectedCourseId(String(course.id));
-      setSelectedCourse(course);
       setTitle(`${course.title} Update`);
     }
   }, [course]);
@@ -44,35 +36,24 @@ export function FacultyAnnouncements({
     setIsModalOpen(isAddAnnouncementOpen);
   }, [isAddAnnouncementOpen]);
 
-  // Fetch Courses list if no course prop passed
-  useEffect(() => {
-    if (!course) {
-      const fetchCourses = async () => {
-        const res = await api.getCourses();
-        if (res.success && res.data) {
-          setCourses(Array.isArray(res.data) ? res.data : []);
-        }
-      };
-      fetchCourses();
-    }
-  }, [course]);
-
-  // Fetch Announcements
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const res = await api.getAnnouncements();
+      const res = await api.getAnnouncements("ANNOUNCEMENT");
       if (res.success && res.data) {
         const all = Array.isArray(res.data) ? res.data : [];
+        // Filter exclusively for official announcements
+        const officialOnly = all.filter(
+          (a: any) => !a.category || a.category.toUpperCase() === "ANNOUNCEMENT"
+        );
+
         const activeCId = selectedCourseId || (course ? String(course.id) : "");
 
         if (activeCId) {
-          const targetCourse = course || selectedCourse;
-          const courseCode = (targetCourse?.code || "").toLowerCase().trim();
-          const courseTitle = (targetCourse?.title || targetCourse?.name || "").toLowerCase().trim();
+          const courseCode = (course?.code || "").toLowerCase().trim();
+          const courseTitle = (course?.title || course?.name || "").toLowerCase().trim();
 
-          // Strictly filter announcements belonging to this specific course
-          const courseAnns = all.filter((a: any) => {
+          const courseAnns = officialOnly.filter((a: any) => {
             if (a.courseId && String(a.courseId) === String(activeCId)) return true;
             const aTitle = (a.title || "").toLowerCase();
             if (courseCode && aTitle.includes(courseCode)) return true;
@@ -81,7 +62,7 @@ export function FacultyAnnouncements({
           });
           setItems(courseAnns);
         } else {
-          setItems(all);
+          setItems(officialOnly);
         }
       }
     } catch (err) {
@@ -95,40 +76,22 @@ export function FacultyAnnouncements({
     fetchAnnouncements();
   }, [selectedCourseId]);
 
-  const handleSelectCourse = (cId: string) => {
-    setSelectedCourseId(cId);
-    const found = courses.find((c) => String(c.id) === String(cId));
-    if (found) {
-      setSelectedCourse(found);
-      setTitle(`${found.title} Update`);
-    } else {
-      setSelectedCourse(null);
-      setTitle("");
-    }
-  };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
     if (onCloseModal) onCloseModal();
   };
 
-  // Handle Post Announcement Submit
   const handlePostAnnouncement = async () => {
-    if (!title.trim()) {
-      alert("Please enter Announcement Title.");
-      return;
-    }
-    if (!body.trim()) {
-      alert("Please enter Announcement Message.");
-      return;
-    }
+    if (!title.trim()) return alert("Please enter Announcement Title.");
+    if (!body.trim()) return alert("Please enter Announcement Message.");
 
     try {
       setSubmitting(true);
       const res = await api.createAnnouncement({
         title,
         body,
-        audience,
+        audience: "STUDENTS",
+        category: "ANNOUNCEMENT",
         courseId: selectedCourseId ? Number(selectedCourseId) : undefined,
       } as any);
 
@@ -136,7 +99,6 @@ export function FacultyAnnouncements({
         alert("Announcement posted successfully!");
         setTitle(course ? `${course.title} Update` : "");
         setBody("");
-        setAudience("STUDENTS");
         handleCloseModal();
         await fetchAnnouncements();
         if (onAnnouncementCreated) onAnnouncementCreated();
@@ -153,17 +115,14 @@ export function FacultyAnnouncements({
 
   return (
     <div className="space-y-6">
-      {!course && <PageHeader title="Course Announcements" subtitle="Broadcast updates, schedules, and alerts to your students." />}
-
-      {/* Main Announcements Grid Display */}
-      <Card className="p-6">
+      <Card className="p-6 shadow-soft">
         <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
           <div>
             <h3 className="text-lg font-bold font-display flex items-center gap-2 text-foreground">
               <Megaphone className="h-5 w-5 text-primary" /> Published Course Announcements
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              View all broadcasted updates and announcements sent to students.
+              View all official broadcasted updates and announcements sent to students.
             </p>
           </div>
           <Btn onClick={() => setIsModalOpen(true)} className="text-xs font-bold shadow-glow">
@@ -171,14 +130,13 @@ export function FacultyAnnouncements({
           </Btn>
         </div>
 
-        {/* Announcements List (Top 4 Recent Announcements Only) */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : items.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {items.slice(0, 4).map((item, idx) => (
+            {items.map((item, idx) => (
               <div
                 key={item.id || idx}
                 className="rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md flex flex-col justify-between"
@@ -189,18 +147,12 @@ export function FacultyAnnouncements({
                       <Megaphone className="h-3.5 w-3.5" /> Broadcast #{idx + 1}
                     </span>
                     <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
-                      {item.audience === "STUDENTS" ? "Students Only" : "Public (All)"}
+                      Official Notice
                     </span>
                   </div>
-
-                  <h4 className="font-display text-base font-bold text-foreground mb-2">
-                    {item.title}
-                  </h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-3">
-                    {item.body}
-                  </p>
+                  <h4 className="font-display text-base font-bold text-foreground mb-2">{item.title}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-3">{item.body}</p>
                 </div>
-
                 <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
                   <span className="flex items-center gap-1 bg-secondary px-2.5 py-1 rounded-lg">
                     <Calendar className="h-3 w-3 text-primary" />
@@ -214,99 +166,49 @@ export function FacultyAnnouncements({
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-            <Megaphone className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-            <h4 className="text-sm font-bold text-foreground mb-1">No announcements posted yet</h4>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
-              Click "+ Add Announcement" above to broadcast an update or alert to your course students.
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center space-y-3">
+            <Megaphone className="h-10 w-10 text-muted-foreground mx-auto opacity-40" />
+            <h4 className="text-sm font-bold text-foreground">No announcements posted yet</h4>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Click "+ Add Announcement" above to broadcast an official update or alert to your course students.
             </p>
-            <Btn onClick={() => setIsModalOpen(true)} className="text-xs font-bold">
+            <Btn onClick={() => setIsModalOpen(true)} className="text-xs font-bold shadow-glow">
               <Plus className="h-4 w-4" /> Add Announcement
             </Btn>
           </div>
         )}
       </Card>
 
-      {/* ========================================================================= */}
-      {/* "+ ADD ANNOUNCEMENT" DIALOG BOX / MODAL OVERLAY */}
-      {/* ========================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl p-6 overflow-hidden max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-5">
+          <div className="relative w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl p-6 overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
               <div>
-                <h2 className="text-xl font-bold font-display text-foreground flex items-center gap-2">
-                  <Megaphone className="h-5 w-5 text-primary" /> Add New Announcement
+                <h2 className="text-lg font-bold font-display text-foreground flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-primary" /> Post Course Announcement
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Broadcast an update or notification to your students.
+                  Broadcast an official announcement to students enrolled in {course ? course.title : "this course"}.
                 </p>
               </div>
-              <button
-                onClick={handleCloseModal}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-              >
+              <button onClick={handleCloseModal} className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-5">
-              {/* Target Course (Read-Only Input Box, No Dropdown Arrow) */}
+            <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Target Course
+                  Announcement Title
                 </label>
-                {selectedCourse ? (
-                  <input
-                    readOnly
-                    value={`${selectedCourse.title} (${selectedCourse.code})`}
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold text-foreground cursor-not-allowed outline-none"
-                  />
-                ) : (
-                  <select
-                    value={selectedCourseId}
-                    onChange={(e) => handleSelectCourse(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring/40 transition"
-                  >
-                    <option value="">Select Target Course (Optional)</option>
-                    {courses
-                      .filter((c) => c.status?.toUpperCase() === "APPROVED")
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title} ({c.code})
-                        </option>
-                      ))}
-                  </select>
-                )}
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Midterm Exam Schedule Update"
+                  className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/40 transition"
+                />
               </div>
 
-              {/* Announcement Title & Audience */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="sm:col-span-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Announcement Title
-                  </label>
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Midterm Exam Schedule Update"
-                    className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/40 transition"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Target Audience
-                  </label>
-                  <input
-                    readOnly
-                    value="Enrolled Students Only"
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold text-foreground cursor-not-allowed outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Announcement Message / Body */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
                   Announcement Message / Details
@@ -314,20 +216,18 @@ export function FacultyAnnouncements({
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Write full announcement details, guidelines, venue, or links..."
+                  placeholder="Write full announcement details, guidelines, or venue..."
                   rows={5}
                   className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/40 transition"
                 />
               </div>
 
-              {/* Centered Submit Button */}
-              <div className="flex justify-center pt-3 border-t border-border">
-                <Btn
-                  onClick={handlePostAnnouncement}
-                  disabled={submitting}
-                  className="px-8 py-3 text-sm font-semibold rounded-full min-w-[220px] justify-center shadow-glow"
-                >
-                  {submitting ? "Posting Announcement..." : "Post Announcement to Students"}
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Btn variant="soft" onClick={handleCloseModal} className="text-xs">
+                  Cancel
+                </Btn>
+                <Btn onClick={handlePostAnnouncement} disabled={submitting} className="text-xs font-bold shadow-glow">
+                  {submitting ? "Posting..." : "Broadcast Announcement"}
                 </Btn>
               </div>
             </div>

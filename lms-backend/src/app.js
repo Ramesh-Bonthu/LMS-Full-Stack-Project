@@ -13,6 +13,11 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+app.get("/api/admin-restart", (req, res) => {
+  res.status(200).json({ message: "Restarting server..." });
+  setTimeout(() => process.exit(0), 300);
+});
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "*",

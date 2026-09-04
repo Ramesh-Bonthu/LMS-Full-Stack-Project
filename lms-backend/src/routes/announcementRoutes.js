@@ -4,7 +4,8 @@ const announcementController = require("../controllers/announcementController");
 const { verifyToken, requireRole } = require("../middleware/auth");
 
 router.get("/", verifyToken, announcementController.getAllAnnouncements);
-router.post("/", verifyToken, requireRole("FACULTY", "ADMIN"), announcementController.createAnnouncement);
+router.post("/", verifyToken, announcementController.createAnnouncement);
+router.post("/:id/reply", verifyToken, announcementController.addReply);
 router.put("/:id", verifyToken, requireRole("FACULTY", "ADMIN"), announcementController.updateAnnouncement);
 router.delete("/:id", verifyToken, requireRole("FACULTY", "ADMIN"), announcementController.deleteAnnouncement);
 router.get("/debug/:role", verifyToken, requireRole("ADMIN"), announcementController.debugAnnouncements);

@@ -25,9 +25,12 @@ export function AdminAnnouncements() {
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const res = await api.getAnnouncements();
+      const res = await api.getAnnouncements("ANNOUNCEMENT");
       if (res.success && res.data) {
-        setItems(Array.isArray(res.data) ? res.data : []);
+        const officialOnly = (Array.isArray(res.data) ? res.data : []).filter(
+          (a: any) => !a.category || a.category.toUpperCase() === "ANNOUNCEMENT"
+        );
+        setItems(officialOnly);
       }
     } catch (error) {
       toast.error("Failed to load announcements");
@@ -46,7 +49,7 @@ export function AdminAnnouncements() {
     }
     try {
       setSubmitting(true);
-      const res = await api.createAnnouncement({ title, body, audience });
+      const res = await api.createAnnouncement({ title, body, audience, category: "ANNOUNCEMENT" });
       if (res.success) {
         toast.success("Broadcast announcement sent successfully!");
         setTitle("");

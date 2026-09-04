@@ -295,3 +295,16 @@ exports.updateQuizAttemptMarks = async (req, res) => {
     return res.status(500).json({ message: "Error updating quiz attempt marks" });
   }
 };
+
+exports.getAllQuizAttempts = async (req, res) => {
+  try {
+    const attempts = await QuizAttempt.findAll({
+      order: [["id", "DESC"]]
+    });
+    return res.json(attempts);
+  } catch (err) {
+    console.error("Error fetching all quiz attempts:", err.message);
+    return res.status(500).json({ message: "Error fetching all quiz attempts" });
+  }
+};
+

@@ -16,12 +16,15 @@ export function NotificationsPage() {
     try {
       setLoading(true);
       const [annRes, notifRes] = await Promise.all([
-        api.getAnnouncements(),
+        api.getAnnouncements("ANNOUNCEMENT"),
         api.getNotifications()
       ]);
       
       if (annRes.success && annRes.data) {
-        setAnnouncements(Array.isArray(annRes.data) ? annRes.data : []);
+        const officialOnly = (Array.isArray(annRes.data) ? annRes.data : []).filter(
+          (a: any) => !a.category || a.category.toUpperCase() === "ANNOUNCEMENT"
+        );
+        setAnnouncements(officialOnly);
       }
       if (notifRes.success && notifRes.data) {
         const sorted = (Array.isArray(notifRes.data) ? notifRes.data : [])

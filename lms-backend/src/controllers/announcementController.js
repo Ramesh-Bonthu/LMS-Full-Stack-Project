@@ -47,6 +47,10 @@ function serializeAnnouncement(a) {
     body: a.body,
     audience: a.audience,
     courseId: a.courseId || null,
+    authorName: a.authorName || "Faculty Instructor",
+    authorRole: a.authorRole || "FACULTY",
+    category: a.category || "ANNOUNCEMENT",
+    replies: Array.isArray(a.replies) ? a.replies : [],
     createdAt: createdDate.toISOString(),
     time: formattedTime,
     isNew: diffHours <= 24,
@@ -56,6 +60,7 @@ function serializeAnnouncement(a) {
 exports.getAllAnnouncements = async (req, res) => {
   try {
     const role = String(req.user.role).toUpperCase();
+    const reqCategory = req.query.category ? String(req.query.category).toUpperCase().trim() : null;
     let whereClause = {};
 
     if (role === "STUDENT") {
@@ -70,6 +75,10 @@ exports.getAllAnnouncements = async (req, res) => {
       whereClause = {};
     } else {
       whereClause = { audience: "ALL" };
+    }
+
+    if (reqCategory) {
+      whereClause.category = reqCategory;
     }
 
     const anns = await Announcement.findAll({
@@ -94,7 +103,7 @@ exports.getAllAnnouncements = async (req, res) => {
 
 exports.createAnnouncement = async (req, res) => {
   try {
-    const { _action, id, title, body, audience, courseId } = req.body;
+    const { _action, id, title, body, audience, courseId, category, type } = req.body;
 
     // 1. Handle DELETE action explicitly first
     if (_action === "DELETE") {
@@ -118,6 +127,7 @@ exports.createAnnouncement = async (req, res) => {
         title: title !== undefined ? title : ann.title,
         body: body !== undefined ? body : ann.body,
         audience: audience ? audience.toString().toUpperCase().trim() : ann.audience,
+        category: category ? category.toString().toUpperCase().trim() : ann.category,
         updatedAt: now,
       });
 
@@ -126,18 +136,63 @@ exports.createAnnouncement = async (req, res) => {
       return res.json(serializeAnnouncement({ ...plain, createdAt: now, updatedAt: now }));
     }
 
-    // 3. Create New Announcement
+    // 3. Create New Announcement / Discussion Topic
     const audienceValue = (audience || "ALL").toString().toUpperCase().trim();
+    const categoryValue = (category || type || "ANNOUNCEMENT").toString().toUpperCase().trim();
+    const defaultAuthorName = req.user ? (req.user.name || req.user.email) : "Instructor";
+    const defaultAuthorRole = req.user ? req.user.role : "FACULTY";
+
     const announcement = await Announcement.create({
-      title: title || "Untitled announcement",
+      title: title || "Untitled Topic",
       body: body || "",
       audience: audienceValue,
+      category: categoryValue,
       courseId: courseId ? Number(courseId) : null,
+      authorName: req.body.authorName || defaultAuthorName,
+      authorRole: req.body.authorRole || defaultAuthorRole,
+      replies: [],
     });
     return res.status(201).json(serializeAnnouncement(announcement.toJSON()));
   } catch (err) {
     console.error("Error in createAnnouncement handler:", err);
     return res.status(500).json({ message: "Error processing announcement" });
+  }
+};
+
+exports.addReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { body } = req.body;
+    if (!body || !body.trim()) {
+      return res.status(400).json({ message: "Reply message body is required" });
+    }
+
+    const ann = await Announcement.findByPk(id);
+    if (!ann) return res.status(404).json({ message: "Discussion topic not found" });
+
+    const defaultAuthorName = req.user ? (req.user.name || req.user.email) : "User";
+    const defaultAuthorRole = req.user ? req.user.role : "STUDENT";
+
+    const existingReplies = Array.isArray(ann.replies) ? ann.replies : [];
+    const newReply = {
+      id: Date.now(),
+      authorName: req.body.authorName || defaultAuthorName,
+      authorRole: req.body.authorRole || defaultAuthorRole,
+      body: body.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReplies = [...existingReplies, newReply];
+    await ann.update({
+      replies: updatedReplies,
+      updatedAt: new Date(),
+    });
+
+    const refreshed = await Announcement.findByPk(id);
+    return res.json(serializeAnnouncement(refreshed.toJSON()));
+  } catch (err) {
+    console.error("Error adding discussion reply:", err);
+    return res.status(500).json({ message: "Error adding reply" });
   }
 };
 

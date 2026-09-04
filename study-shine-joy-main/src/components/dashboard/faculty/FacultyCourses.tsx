@@ -16,6 +16,7 @@ import {
   FileQuestion,
   CalendarCheck,
   Megaphone,
+  MessageSquare,
   BarChart3,
   Layers,
   CloudUpload
@@ -40,9 +41,10 @@ import { FacultyAssignments } from "./FacultyAssignments";
 import { FacultySubmissions } from "./FacultySubmissions";
 import { FacultyAttendance } from "./FacultyAttendance";
 import { FacultyAnnouncements } from "./FacultyAnnouncements";
+import { CourseDiscussionForum } from "../shared/CourseDiscussionForum";
 
 type ContentType = "UPLOAD_VIDEO" | "YOUTUBE_URL" | "PDF_NOTES";
-type CourseTab = "modules" | "quizzes" | "assignments" | "submissions" | "attendance" | "announcements" | "analytics";
+type CourseTab = "modules" | "quizzes" | "assignments" | "submissions" | "attendance" | "announcements" | "discussion" | "analytics";
 
 export function FacultyCourses() {
   const { user } = useAuth();
@@ -67,6 +69,7 @@ export function FacultyCourses() {
   const [courseQuizzes, setCourseQuizzes] = useState<any[]>([]);
   const [courseAssignments, setCourseAssignments] = useState<any[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
+  const [allQuizAttempts, setAllQuizAttempts] = useState<any[]>([]);
   const [contentsLoading, setContentsLoading] = useState(false);
   const [isAddQuizOpen, setIsAddQuizOpen] = useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
@@ -177,17 +180,60 @@ export function FacultyCourses() {
 
   useEffect(() => {
     if (selectedCourse && activeTab === "analytics") {
-      const fetchSubmissions = async () => {
+      const loadAnalyticsData = async () => {
         try {
-          const res = await api.getSubmissions();
-          if (res.success && res.data) {
-            setAllSubmissions(Array.isArray(res.data) ? res.data : []);
+          // 1. Fetch latest quizzes for the selected course
+          const quizzesRes = await api.getQuizzes();
+          const loadedQuizzes = quizzesRes.success && Array.isArray(quizzesRes.data)
+            ? quizzesRes.data.filter((q: any) => String(q.courseId) === String(selectedCourse.id))
+            : courseQuizzes;
+          if (quizzesRes.success && Array.isArray(quizzesRes.data)) {
+            setCourseQuizzes(loadedQuizzes);
           }
+
+          // 2. Fetch latest assignments for the selected course
+          const assignRes = await api.getAssignments();
+          if (assignRes.success && Array.isArray(assignRes.data)) {
+            setCourseAssignments(
+              assignRes.data.filter((a: any) => String(a.courseId) === String(selectedCourse.id))
+            );
+          }
+
+          // 3. Fetch all assignment submissions
+          const subsRes = await api.getSubmissions();
+          if (subsRes.success && subsRes.data) {
+            setAllSubmissions(Array.isArray(subsRes.data) ? subsRes.data : []);
+          }
+
+          // 4. Fetch quiz attempts: try getAllQuizAttempts first, fallback to per-quiz getQuizAttempts
+          let combinedAttempts: any[] = [];
+          const allAttemptsRes = await api.getAllQuizAttempts();
+          if (allAttemptsRes.success && Array.isArray(allAttemptsRes.data) && allAttemptsRes.data.length > 0) {
+            combinedAttempts = allAttemptsRes.data;
+          }
+
+          // Fallback or augment with per-quiz attempts to guarantee all student attempt records are captured
+          if (loadedQuizzes.length > 0) {
+            const attemptPromises = loadedQuizzes.map((q: any) => api.getQuizAttempts(q.id.toString()));
+            const attemptResults = await Promise.all(attemptPromises);
+            attemptResults.forEach((res) => {
+              if (res.success && Array.isArray(res.data)) {
+                res.data.forEach((att: any) => {
+                  if (!combinedAttempts.some((existing: any) => String(existing.id) === String(att.id))) {
+                    combinedAttempts.push(att);
+                  }
+                });
+              }
+            });
+          }
+
+          setAllQuizAttempts(combinedAttempts);
         } catch (err) {
-          console.error("Error fetching all submissions for analytics:", err);
+          console.error("Error loading faculty analytics:", err);
         }
       };
-      fetchSubmissions();
+
+      loadAnalyticsData();
     }
   }, [selectedCourse, activeTab]);
 
@@ -309,6 +355,8 @@ export function FacultyCourses() {
         return "Mark Attendance";
       case "announcements":
         return "Add Announcement";
+      case "discussion":
+        return "Post Discussion Topic";
       default:
         return "Add Content";
     }
@@ -341,7 +389,7 @@ export function FacultyCourses() {
           <Btn variant="soft" onClick={() => setSelectedCourse(null)} className="rounded-xl px-4 py-2 text-xs">
             <ArrowLeft className="h-4 w-4" /> Back to Courses
           </Btn>
-          {activeTab !== "attendance" && (
+          {activeTab !== "attendance" && activeTab !== "announcements" && activeTab !== "discussion" && (
             <Btn onClick={handleTopButtonClick} className="text-xs font-bold shadow-glow">
               <Plus className="h-4 w-4" /> {getTopButtonLabel()}
             </Btn>
@@ -363,16 +411,12 @@ export function FacultyCourses() {
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl font-bold md:text-3xl font-display">{selectedCourse.title}</h1>
-              {selectedCourse.description && (
-                <p className="mt-2 text-sm text-muted-foreground max-w-3xl leading-relaxed">
-                  {selectedCourse.description}
-                </p>
-              )}
+              <h2 className="text-2xl font-bold font-display text-foreground">{selectedCourse.title}</h2>
+              <p className="text-xs text-muted-foreground mt-1 max-w-2xl">{selectedCourse.description}</p>
             </div>
             <button
               onClick={handleOpenEnrolledModal}
-              className="flex items-center gap-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 px-4 py-2 rounded-xl transition shadow-sm hover:scale-105 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 px-3.5 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition cursor-pointer"
               title="Click to view list of enrolled students"
             >
               <Users className="h-4 w-4 text-primary" />
@@ -383,13 +427,14 @@ export function FacultyCourses() {
 
         {/* Sub-Modules Tabs Bar */}
         <div className="border-b border-border">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 pb-1 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 pb-1 w-full">
             {[
               { id: "modules", label: "Content / Modules", icon: Layers },
               { id: "quizzes", label: "Quizzes", icon: FileQuestion },
               { id: "assignments", label: "Assignments & Correction", icon: ClipboardList },
               { id: "attendance", label: "Attendance", icon: CalendarCheck },
               { id: "announcements", label: "Announcements", icon: Megaphone },
+              { id: "discussion", label: "Discussion Forum", icon: MessageSquare },
               { id: "analytics", label: "Analytics", icon: BarChart3 },
             ].map((tab) => {
               const active = activeTab === tab.id;
@@ -398,7 +443,7 @@ export function FacultyCourses() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id as CourseTab)}
-                  className={`flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-3 text-[14px] font-semibold rounded-t-xl transition text-center border-b-2 w-full ${
+                  className={`flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-3 text-[13px] font-semibold rounded-t-xl transition text-center border-b-2 w-full ${
                     active
                       ? "border-primary text-primary bg-primary/10 shadow-sm"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
@@ -434,166 +479,125 @@ export function FacultyCourses() {
                         01
                       </span>
                       <div>
-                        <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                          <span>Official Course Syllabus PDF</span>
-                          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-                            AI Quiz Context
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">Main Syllabus Document & AI Quiz Reference</div>
+                        <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-emerald-500" />
+                          Official Course Syllabus & Master Content PDF
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Uploaded during course creation. Download to view complete course outline and syllabus notes.
+                        </p>
                       </div>
                     </div>
 
                     <a
-                      href={`${API_BASE_URL.replace("/api", "")}${selectedCourse.pdfUrl}`}
+                      href={`${API_BASE_URL}${selectedCourse.pdfUrl}`}
                       target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow hover:opacity-90 transition"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-600 transition"
                     >
                       <Download className="h-3.5 w-3.5" /> Download PDF
                     </a>
                   </div>
-
-                  {selectedCourse.content && (
-                    <div className="mt-3 pt-3 border-t border-emerald-500/20">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-                        Extracted Syllabus Text (AI Prompt Context):
-                      </div>
-                      <div className="max-h-36 overflow-y-auto rounded-xl bg-background/80 p-3 text-xs font-mono whitespace-pre-line text-muted-foreground border border-emerald-500/20">
-                        {selectedCourse.content}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Uploaded Video, PDF, YouTube Files (FIRST IN ORDER) */}
-              {contentsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              ) : courseContents.length > 0 ? (
-                courseContents.map((item, index) => {
-                  const itemNumber = (selectedCourse.pdfUrl ? index + 2 : index + 1).toString().padStart(2, "0");
-                  return (
-                    <div
-                      key={item.id || index}
-                      className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 transition hover:bg-secondary/40 shadow-sm"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary font-bold text-xs text-muted-foreground">
-                          {itemNumber}
+              {/* Uploaded Video/PDF Materials */}
+              {courseContents.map((content: any, idx: number) => {
+                const seqNum = String((selectedCourse.pdfUrl ? 1 : 0) + idx + 1).padStart(2, "0");
+                return (
+                  <div
+                    key={content.id}
+                    className="rounded-2xl border border-border bg-card p-4 transition hover:border-primary/40 hover:shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs">
+                          {seqNum}
                         </span>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                          {item.type === "youtube" ? (
-                            <Youtube className="h-5 w-5 text-red-500" />
-                          ) : item.type === "video" ? (
-                            <PlayCircle className="h-5 w-5 text-primary" />
-                          ) : (
-                            <FileText className="h-5 w-5 text-amber-500" />
-                          )}
-                        </div>
                         <div>
-                          <div className="text-sm font-semibold">{item.name}</div>
-                          <div className="text-[11px] text-muted-foreground capitalize">
-                            {item.type === "youtube" ? "YouTube Video Resource" : `${item.type.toUpperCase()} File`}
-                          </div>
+                          <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                            {content.type === "UPLOAD_VIDEO" && <PlayCircle className="h-4 w-4 text-primary" />}
+                            {content.type === "YOUTUBE_URL" && <Youtube className="h-4 w-4 text-red-500" />}
+                            {content.type === "PDF_NOTES" && <FileText className="h-4 w-4 text-emerald-500" />}
+                            {content.name}
+                          </h4>
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            {content.type.replace("_", " ")}
+                          </span>
                         </div>
                       </div>
 
-                      <a
-                        href={item.link && item.link.startsWith("http") ? item.link : `${API_BASE_URL.replace("/api", "")}${item.link}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary hover:bg-primary-soft/80 transition"
-                      >
-                        {item.type === "pdf" ? "View PDF" : "Open Media"}
-                      </a>
+                      {content.fileUrl && (
+                        <a
+                          href={`${API_BASE_URL}${content.fileUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition"
+                        >
+                          <Download className="h-3.5 w-3.5" /> View / Download
+                        </a>
+                      )}
                     </div>
-                  );
-                })
-              ) : null}
+                  </div>
+                );
+              })}
 
-              {/* Published Course Quizzes (APPENDED SEQUENTIALLY AFTER CONTENTS) */}
-              {courseQuizzes.length > 0 &&
-                courseQuizzes.map((quiz, qIdx) => {
-                  const quizNumber = (
-                    (selectedCourse.pdfUrl ? 1 : 0) +
-                    courseContents.length +
-                    qIdx +
-                    1
-                  )
-                    .toString()
-                    .padStart(2, "0");
-                  return (
-                    <div
-                      key={`quiz-${quiz.id || qIdx}`}
-                      className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/5 p-4 transition hover:bg-primary/10 shadow-sm"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary font-bold text-xs text-muted-foreground">
-                          {quizNumber}
+              {/* Quizzes List */}
+              {courseQuizzes.map((quiz: any, idx: number) => {
+                const seqNum = String((selectedCourse.pdfUrl ? 1 : 0) + courseContents.length + idx + 1).padStart(2, "0");
+                return (
+                  <div
+                    key={`quiz-${quiz.id}`}
+                    className="rounded-2xl border border-border bg-card p-4 transition hover:border-emerald-500/40 hover:shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 font-bold text-xs">
+                          {seqNum}
                         </span>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary font-display font-bold text-lg">
-                          Q
-                        </div>
                         <div>
-                          <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                            <span>{quiz.title}</span>
-                            <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
-                              Published Quiz
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {quiz.questions?.length || quiz.totalQuestions || 0} Questions · {quiz.totalMarks || 20} Marks · {quiz.timeLimit || 15} Mins
-                          </div>
+                          <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                            <FileQuestion className="h-4 w-4 text-emerald-500" />
+                            {quiz.title} (Published Quiz)
+                          </h4>
+                          <span className="text-[10px] font-semibold text-muted-foreground">
+                            {quiz.questions?.length || quiz.totalQuestions || 5} Questions • {quiz.totalMarks || 20} Marks
+                          </span>
                         </div>
                       </div>
 
                       <button
                         onClick={() => handleTabChange("quizzes")}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow hover:opacity-90 transition"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-600 transition"
                       >
                         View Quiz &rarr;
                       </button>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
-              {/* Published Course Assignments (APPENDED SEQUENTIALLY AFTER QUIZZES) */}
-              {courseAssignments.length > 0 &&
-                courseAssignments.map((assign, aIdx) => {
-                  const assignNumber = (
-                    (selectedCourse.pdfUrl ? 1 : 0) +
-                    courseContents.length +
-                    courseQuizzes.length +
-                    aIdx +
-                    1
-                  )
-                    .toString()
-                    .padStart(2, "0");
-                  return (
-                    <div
-                      key={`assign-${assign.id || aIdx}`}
-                      className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/5 p-4 transition hover:bg-primary/10 shadow-sm"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary font-bold text-xs text-muted-foreground">
-                          {assignNumber}
+              {/* Assignments List */}
+              {courseAssignments.map((assign: any, idx: number) => {
+                const seqNum = String((selectedCourse.pdfUrl ? 1 : 0) + courseContents.length + courseQuizzes.length + idx + 1).padStart(2, "0");
+                return (
+                  <div
+                    key={`assign-${assign.id}`}
+                    className="rounded-2xl border border-border bg-card p-4 transition hover:border-primary/40 hover:shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs">
+                          {seqNum}
                         </span>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary font-display font-bold text-lg">
-                          A
-                        </div>
                         <div>
-                          <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                            <span>{assign.title}</span>
-                            <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
-                              Published Assignment
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Due: {assign.deadline ? new Date(assign.deadline).toLocaleDateString() : "No Deadline"} · {assign.totalMarks || 100} Marks
-                          </div>
+                          <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4 text-primary" />
+                            {assign.title} (Published Assignment)
+                          </h4>
+                          <span className="text-[10px] font-semibold text-muted-foreground">
+                            Due: {assign.dueDate || "No deadline"} • {assign.totalMarks || 100} Marks
+                          </span>
                         </div>
                       </div>
 
@@ -604,8 +608,9 @@ export function FacultyCourses() {
                         View Assignment &rarr;
                       </button>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
               {!selectedCourse.pdfUrl && courseContents.length === 0 && courseQuizzes.length === 0 && courseAssignments.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground text-sm">
@@ -650,6 +655,9 @@ export function FacultyCourses() {
               fetchCourseContents(selectedCourse.id);
             }}
           />
+        )}
+        {activeTab === "discussion" && (
+          <CourseDiscussionForum course={selectedCourse} />
         )}
         {activeTab === "analytics" && (
           <div className="space-y-6">
@@ -753,6 +761,104 @@ export function FacultyCourses() {
                         <Bar dataKey="avgScore" radius={[8, 8, 0, 0]} maxBarSize={55}>
                           {chartData.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "var(--color-primary)" : "#10b981"} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </div>
+            </Card>
+
+            {/* Quiz Average Scores Bar Chart */}
+            <Card className="p-6 shadow-soft space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div>
+                  <h3 className="text-base font-bold font-display flex items-center gap-2 text-foreground">
+                    <FileQuestion className="h-5 w-5 text-emerald-500" /> Quiz Average Scores Analytics
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Class performance breakdown across attempted course quizzes.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">
+                  {courseQuizzes.length} Published Quizzes
+                </span>
+              </div>
+
+              <div className="h-72 w-full pt-2">
+                {(() => {
+                  const quizChartData = courseQuizzes
+                    .map((q) => {
+                      const quizAttempts = allQuizAttempts.filter((att: any) => String(att.quizId) === String(q.id));
+                      const latestAttemptsMap = new Map();
+                      quizAttempts.forEach((att: any) => {
+                        const sId = String(att.studentId);
+                        if (!latestAttemptsMap.has(sId)) {
+                          latestAttemptsMap.set(sId, att);
+                        }
+                      });
+                      const uniqueAttempts = Array.from(latestAttemptsMap.values());
+                      const gradedMarks = uniqueAttempts.map((att: any) => {
+                        const isMalpractice = Boolean(att.malpractice || (att.tabSwitches && Number(att.tabSwitches) > 0));
+                        return isMalpractice ? 0 : Number(att.marks || 0);
+                      });
+                      const avgScore = gradedMarks.length > 0
+                        ? Math.round(gradedMarks.reduce((acc, cur) => acc + cur, 0) / gradedMarks.length)
+                        : 0;
+                      const totalMarks = Number(q.totalMarks || 20);
+
+                      return {
+                        name: q.title.length > 16 ? `${q.title.slice(0, 16)}...` : q.title,
+                        fullName: q.title,
+                        avgScore: avgScore,
+                        totalMarks: totalMarks,
+                        attemptsCount: uniqueAttempts.length,
+                        hasAttempts: uniqueAttempts.length > 0,
+                      };
+                    })
+                    .filter((item) => item.hasAttempts);
+
+                  if (quizChartData.length === 0) {
+                    return (
+                      <div className="flex h-full flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                        <FileQuestion className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                        <p className="text-sm font-semibold text-foreground">No attempted quiz performance records yet.</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                          Once enrolled students attempt course quizzes in the "Quizzes" tab, class score averages will automatically calculate and display here.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={quizChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} />
+                        <YAxis stroke="var(--color-muted-foreground)" fontSize={12} domain={[0, 20]} tickLine={false} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="rounded-xl border border-border bg-card p-3 shadow-lg text-xs space-y-1">
+                                  <div className="font-bold text-foreground">{data.fullName}</div>
+                                  <div className="text-emerald-500 font-bold text-sm">
+                                    Class Average Score: {data.avgScore} / {data.totalMarks} Marks
+                                  </div>
+                                  <div className="text-muted-foreground text-[11px]">
+                                    {data.attemptsCount} Student Attempt(s)
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="avgScore" radius={[8, 8, 0, 0]} maxBarSize={55}>
+                          {quizChartData.map((_, index) => (
+                            <Cell key={`cell-quiz-${index}`} fill={index % 2 === 0 ? "#10b981" : "var(--color-primary)"} />
                           ))}
                         </Bar>
                       </BarChart>

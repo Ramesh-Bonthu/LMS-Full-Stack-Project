@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Clock,
   Award,
+  MessageSquare,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -32,8 +33,9 @@ import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 import { DynamicCourseCard } from "../../shared/DisplayCards";
 import { StudentQuizzes } from "./StudentQuizzes";
 import { StudentAssignments } from "./StudentAssignments";
+import { CourseDiscussionForum } from "../shared/CourseDiscussionForum";
 
-type CourseTab = "modules" | "quizzes" | "assignments" | "analytics";
+type CourseTab = "modules" | "quizzes" | "assignments" | "discussion" | "analytics";
 
 export function StudentCourses() {
   const { user } = useAuth();
@@ -602,6 +604,7 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
             { id: "modules" as CourseTab, label: "Content / Modules", icon: Layers },
             { id: "quizzes" as CourseTab, label: "Quizzes", icon: FileQuestion },
             { id: "assignments" as CourseTab, label: "Assignments", icon: ClipboardList },
+            { id: "discussion" as CourseTab, label: "Discussion Forum", icon: MessageSquare },
             { id: "analytics" as CourseTab, label: "Analytics", icon: BarChart3 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -847,7 +850,12 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
         </Card>
       )}
 
-      {/* TAB 4: ANALYTICS */}
+      {/* TAB 4: DISCUSSION FORUM */}
+      {activeTab === "discussion" && (
+        <CourseDiscussionForum course={course} />
+      )}
+
+      {/* TAB 5: ANALYTICS */}
       {activeTab === "analytics" && (
         <div className="space-y-6">
           {/* Card 1: Assignment Performance Analytics */}
