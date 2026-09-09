@@ -1,9 +1,0 @@
-[build]
-  base = "study-shine-joy-main"
-  command = "npm run build"
-  publish = "dist/client"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
