@@ -14,5 +14,8 @@ module.exports = (sequelize) => {
     profilePicture: { type: DataTypes.STRING },
     skills: { type: DataTypes.JSONB, defaultValue: [] },
     socialLinks: { type: DataTypes.JSONB, defaultValue: {} },
+    year: { type: DataTypes.STRING, defaultValue: "3rd Year" },
+    branch: { type: DataTypes.STRING, defaultValue: "CSE" },
+    sem: { type: DataTypes.STRING, defaultValue: "Sem 1" },
   });
 };

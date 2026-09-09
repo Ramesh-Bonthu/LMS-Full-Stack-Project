@@ -169,6 +169,16 @@
     border-color: var(--color-border);
   }
 
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-surface,
+  .recharts-surface *,
+  svg,
+  svg * {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   html,
   body {
     background: var(--color-background);

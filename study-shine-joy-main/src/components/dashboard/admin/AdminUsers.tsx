@@ -10,6 +10,9 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<RoleFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [yearFilter, setYearFilter] = useState("Overall");
+  const [branchFilter, setBranchFilter] = useState("Overall");
+  const [semFilter, setSemFilter] = useState("Overall");
 
   const fetchUsers = async () => {
     try {
@@ -47,9 +50,12 @@ export function AdminUsers() {
 
   // Filtered users for table
   const filteredUsers = usersData
-    .filter((u) => {
-      if (selectedRole === "ALL") return true;
-      return u.role?.toUpperCase() === selectedRole;
+    .filter((u: any) => {
+      if (selectedRole !== "ALL" && u.role?.toUpperCase() !== selectedRole) return false;
+      if (yearFilter !== "Overall" && u.year !== yearFilter) return false;
+      if (branchFilter !== "Overall" && u.branch !== branchFilter) return false;
+      if (semFilter !== "Overall" && u.sem !== semFilter) return false;
+      return true;
     })
     .filter(
       (u) =>
@@ -142,12 +148,14 @@ export function AdminUsers() {
                 </span>
               </div>
 
-              <div>
-                <h3 className="font-display text-lg font-bold text-foreground">{cfg.title}</h3>
-                <p className="text-xs text-muted-foreground">{cfg.subtitle}</p>
-                <div className="mt-3 font-display text-3xl font-bold text-foreground">
-                  {cfg.count} <span className="text-xs font-medium text-muted-foreground">members</span>
+              <div className="space-y-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="font-display text-lg font-bold text-foreground">{cfg.title}</h3>
+                  <div className="font-display text-2xl font-extrabold text-foreground">
+                    {cfg.count} <span className="text-xs font-semibold text-muted-foreground">members</span>
+                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground">{cfg.subtitle}</p>
               </div>
 
               {isSelected && (
@@ -179,13 +187,66 @@ export function AdminUsers() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {selectedRole !== "ALL" && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Inline Filter Controls: Year, Branch, Sem */}
+            <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-2xl border border-border">
+              <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-xl border border-border text-xs font-medium">
+                <span className="text-muted-foreground font-semibold">Year:</span>
+                <select
+                  value={yearFilter}
+                  onChange={(e) => setYearFilter(e.target.value)}
+                  className="bg-transparent font-bold text-foreground focus:outline-none cursor-pointer"
+                >
+                  <option value="Overall">Overall</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-xl border border-border text-xs font-medium">
+                <span className="text-muted-foreground font-semibold">Branch:</span>
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="bg-transparent font-bold text-foreground focus:outline-none cursor-pointer"
+                >
+                  <option value="Overall">Overall</option>
+                  <option value="CSE">CSE</option>
+                  <option value="ECE">ECE</option>
+                  <option value="EEE">EEE</option>
+                  <option value="MECH">MECH</option>
+                  <option value="CIVIL">CIVIL</option>
+                  <option value="IT">IT</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-xl border border-border text-xs font-medium">
+                <span className="text-muted-foreground font-semibold">Sem:</span>
+                <select
+                  value={semFilter}
+                  onChange={(e) => setSemFilter(e.target.value)}
+                  className="bg-transparent font-bold text-foreground focus:outline-none cursor-pointer"
+                >
+                  <option value="Overall">Overall</option>
+                  <option value="Sem 1">Sem 1</option>
+                  <option value="Sem 2">Sem 2</option>
+                </select>
+              </div>
+            </div>
+
+            {(selectedRole !== "ALL" || yearFilter !== "Overall" || branchFilter !== "Overall" || semFilter !== "Overall") && (
               <button
-                onClick={() => setSelectedRole("ALL")}
-                className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full hover:bg-primary/20 transition"
+                onClick={() => {
+                  setSelectedRole("ALL");
+                  setYearFilter("Overall");
+                  setBranchFilter("Overall");
+                  setSemFilter("Overall");
+                }}
+                className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full hover:bg-primary/20 transition cursor-pointer"
               >
-                Clear Filter (Show All)
+                Clear Filters
               </button>
             )}
 
@@ -195,7 +256,7 @@ export function AdminUsers() {
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-full border border-border bg-card py-1.5 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-ring/40 w-56"
+                className="rounded-full border border-border bg-card py-1.5 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-ring/40 w-44"
               />
             </div>
           </div>
@@ -218,7 +279,7 @@ export function AdminUsers() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((entry) => {
+                {filteredUsers.map((entry: any) => {
                   const roleStr = entry.role?.toUpperCase() || "USER";
                   const roleBadgeClass =
                     roleStr === "ADMIN"

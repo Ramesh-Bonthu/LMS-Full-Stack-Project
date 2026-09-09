@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader, ArrowLeft, Upload, CheckCircle2, FileText, Download } from "lucide-react";
+import { Loader, ArrowLeft, Upload, CheckCircle2, FileText, Download, AlertCircle } from "lucide-react";
 import { type Assignment, type Course, api, API_BASE_URL } from "@/lib/api";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
 import { DynamicAssignmentTable } from "../../shared/DisplayCards";
@@ -123,12 +123,39 @@ function AssignmentDetailView({ assignment, onBack }: { assignment: Assignment; 
   const [submitting, setSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState<string>("");
+
+  const handleFileSelect = (selectedFile: File | null) => {
+    setPdfError("");
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    const ext = selectedFile.name.toLowerCase().split('.').pop();
+    const isPdf = ext === "pdf" || selectedFile.type === "application/pdf";
+
+    if (!isPdf) {
+      setFile(null);
+      setPdfError("🚫 Only PDF (.pdf) format files are allowed for assignment solution submission.");
+      return;
+    }
+
+    setFile(selectedFile);
+  };
 
   const handleSubmit = async () => {
     if (!file) {
-      alert("Please select a PDF file first.");
+      setPdfError("Please select a valid PDF file first.");
       return;
     }
+
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== "pdf" && file.type !== "application/pdf") {
+      setPdfError("🚫 Only PDF (.pdf) format files are allowed for assignment submission.");
+      return;
+    }
+
     setSubmitting(true);
     const formData = new FormData();
     formData.append("file", file);
@@ -139,7 +166,7 @@ function AssignmentDetailView({ assignment, onBack }: { assignment: Assignment; 
         setSubmissionSuccess(true);
         setTimeout(onBack, 1500);
       } else {
-        alert("Submission failed: " + res.error);
+        setPdfError("Submission failed: " + (res.error || "Please select a valid PDF document."));
       }
     } finally {
       setSubmitting(false);
@@ -228,7 +255,7 @@ function AssignmentDetailView({ assignment, onBack }: { assignment: Assignment; 
             </Card>
           ) : (
             <Card>
-              <h3 className="mb-4 font-display text-sm font-bold">Submission</h3>
+              <h3 className="mb-4 font-display text-sm font-bold">Submission (Strictly PDF .pdf Only) *</h3>
               {submissionSuccess ? (
                 <div className="flex flex-col items-center justify-center py-4 text-center">
                   <div className="mb-2 rounded-full bg-success/20 p-2 text-success">
@@ -240,32 +267,55 @@ function AssignmentDetailView({ assignment, onBack }: { assignment: Assignment; 
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Upload your completed assignment as a PDF file.
+                    Upload your completed assignment solution strictly as a PDF file (.pdf). Non-PDF files are restricted.
                   </p>
                   <div className="relative">
                     <input
                       type="file"
-                      accept=".pdf"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      accept="application/pdf,.pdf"
+                      onChange={(e) => {
+                        const selected = e.target.files?.[0] || null;
+                        handleFileSelect(selected);
+                        if (!selected || pdfError) {
+                          e.target.value = "";
+                        }
+                      }}
                       className="hidden"
                       id="assignment-file"
                     />
                     <label 
                       htmlFor="assignment-file"
                       className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
-                        file ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        pdfError 
+                          ? "border-destructive/60 bg-destructive/5" 
+                          : file 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
                       }`}
                     >
-                      <Upload className={`mx-auto h-8 w-8 mb-2 ${file ? "text-primary" : "text-muted-foreground"}`} />
-                      <p className="text-xs font-medium">{file ? file.name : "Click to select PDF file"}</p>
+                      <Upload className={`mx-auto h-8 w-8 mb-2 ${pdfError ? "text-destructive" : file ? "text-primary" : "text-muted-foreground"}`} />
+                      <p className="text-xs font-bold text-foreground">
+                        {file ? `📄 ${file.name}` : "Click to select PDF document (.pdf)"}
+                      </p>
+                      <span className="text-[11px] text-muted-foreground mt-1">
+                        {file ? `Size: ${(file.size / (1024 * 1024)).toFixed(2)} MB · PDF Ready` : "Strictly PDF format only"}
+                      </span>
                     </label>
                   </div>
+
+                  {pdfError && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-destructive bg-destructive/15 p-3 rounded-xl border border-destructive/30 shadow-sm animate-in fade-in slide-in-from-top-1">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                      <span>{pdfError}</span>
+                    </div>
+                  )}
+
                   <Btn 
-                    className="w-full" 
+                    className="w-full font-bold" 
                     onClick={handleSubmit} 
-                    disabled={submitting || isSubmitted || !file}
+                    disabled={submitting || isSubmitted || !file || Boolean(pdfError)}
                   >
-                    {submitting ? "Submitting..." : isSubmitted ? "Already Submitted" : "Submit Assignment"}
+                    {submitting ? "Submitting..." : isSubmitted ? "Already Submitted" : "Submit Assignment PDF"}
                   </Btn>
                 </div>
               )}

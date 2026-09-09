@@ -45,7 +45,31 @@ export function FacultyAssignments({
   const [deadline, setDeadline] = useState("");
   const [description, setDescription] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setPdfFile(null);
+      setPdfError(null);
+      return;
+    }
+    const fileNameLower = file.name.toLowerCase();
+    const isPdf = fileNameLower.endsWith(".pdf") || file.type === "application/pdf";
+
+    if (!isPdf) {
+      setPdfFile(null);
+      e.target.value = "";
+      const errMsg = "Upload only .pdf format files for Question Paper PDF.";
+      setPdfError(errMsg);
+      alert(`🚫 ${errMsg}`);
+      return;
+    }
+
+    setPdfFile(file);
+    setPdfError(null);
+  };
 
   // Selected assignment detail modal state (When assignment card is clicked)
   const [selectedAssignmentForDetails, setSelectedAssignmentForDetails] = useState<any | null>(null);
@@ -289,6 +313,12 @@ export function FacultyAssignments({
       if (deadline) formData.append("deadline", deadline);
       formData.append("totalMarks", "100");
       if (pdfFile) {
+        const isPdf = pdfFile.name.toLowerCase().endsWith(".pdf") || pdfFile.type === "application/pdf";
+        if (!isPdf) {
+          alert("🚫 Only PDF (.pdf) files are allowed for Question Paper PDF.");
+          setSubmitting(false);
+          return;
+        }
         formData.append("pdf", pdfFile);
       }
 
@@ -299,6 +329,7 @@ export function FacultyAssignments({
         setDeadline("");
         setDescription("");
         setPdfFile(null);
+        setPdfError(null);
         handleCloseModal();
         await fetchPublishedAssignments(selectedCourseId);
         if (onAssignmentCreated) onAssignmentCreated();
@@ -755,34 +786,52 @@ export function FacultyAssignments({
                 />
               </div>
 
-              {/* PDF Question Paper Upload Box */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Question Paper (PDF Only)
+              {/* PDF Question Paper Upload Box (Strict PDF Validation & Red Warning Banner) */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                  Question Paper (Strictly PDF .pdf Only) *
                 </label>
-                <div className="rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-5 text-center transition hover:border-primary/60">
+                <div
+                  className={`rounded-2xl border-2 border-dashed ${
+                    pdfError
+                      ? "border-destructive/60 bg-destructive/5"
+                      : "border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10"
+                  } p-5 text-center transition group`}
+                >
                   <input
                     type="file"
-                    accept=".pdf"
+                    accept="application/pdf,.pdf"
                     id="modal-assignment-pdf-upload"
-                    onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                    onChange={handlePdfSelect}
                     className="hidden"
                   />
                   <label
                     htmlFor="modal-assignment-pdf-upload"
                     className="cursor-pointer flex flex-col items-center justify-center"
                   >
-                    <Upload className="h-6 w-6 text-primary mb-1.5" />
+                    <Upload
+                      className={`h-6 w-6 ${
+                        pdfError ? "text-destructive" : "text-primary"
+                      } mb-1.5 group-hover:scale-110 transition-transform`}
+                    />
                     <span className="text-sm font-bold text-foreground">
                       {pdfFile ? `📄 Question Paper Attached: ${pdfFile.name}` : "Upload Assignment Question Paper (PDF Only)"}
                     </span>
                     <span className="text-xs text-muted-foreground mt-0.5">
                       {pdfFile
-                        ? `Size: ${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to publish`
-                        : "Attach official question paper PDF file for students to download & solve."}
+                        ? `Size: ${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB · Strictly PDF document ready`
+                        : "Attach official question paper PDF file (.pdf). Non-PDF formats like .exe, .doc are strictly rejected."}
                     </span>
                   </label>
                 </div>
+
+                {/* Explicit Red Error Box directly below Upload Dropzone */}
+                {pdfError && (
+                  <div className="flex items-center gap-2 text-xs font-bold text-destructive bg-destructive/15 p-3 rounded-xl border border-destructive/30 shadow-sm animate-in fade-in slide-in-from-top-1">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                    <span>{pdfError}</span>
+                  </div>
+                )}
               </div>
 
               {/* Centered Submit Button */}

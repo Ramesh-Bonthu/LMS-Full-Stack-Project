@@ -19,24 +19,25 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = [
-    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".xls", ".xlsx", 
-    ".zip", ".rar", ".mp4", ".mov", ".avi", ".mkv", ".webm", ".png", ".jpg", ".jpeg", ".webp"
-  ];
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowedExtensions.includes(ext)) {
+  const allowedExts = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp"];
+
+  if (allowedExts.includes(ext)) {
     cb(null, true);
   } else {
-    cb(null, true); // Allow all standard file types
+    cb(new Error("INVALID_FILE_TYPE"));
   }
 };
+
+
 
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 200 * 1024 * 1024, // 200MB system limit
   },
 });
 
 module.exports = upload;
+

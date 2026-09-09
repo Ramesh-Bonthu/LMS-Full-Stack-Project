@@ -1,5 +1,6 @@
 const { Assignment, Submission, Course, Notification } = require("../models");
 const { Op } = require("sequelize");
+const path = require("path");
 
 exports.getAllAssignments = async (req, res) => {
   if (req.user.role === "STUDENT") {
@@ -60,6 +61,10 @@ exports.createAssignment = async (req, res) => {
 
     let pdfUrl = "";
     if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      if (ext !== ".pdf" && req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({ message: "Only PDF (.pdf) files are allowed for Question Paper PDF." });
+      }
       pdfUrl = `/uploads/${req.file.filename}`;
     }
 
@@ -131,7 +136,12 @@ exports.submitAssignment = async (req, res) => {
     });
 
     if (!req.file) {
-      return res.status(400).json({ message: "Assignment submission requires a PDF file" });
+      return res.status(400).json({ message: "Assignment submission requires a PDF file (.pdf)" });
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (ext !== ".pdf" || req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ message: "Only PDF (.pdf) files are allowed for Assignment submission." });
     }
 
     const filePath = `/uploads/${req.file.filename}`;

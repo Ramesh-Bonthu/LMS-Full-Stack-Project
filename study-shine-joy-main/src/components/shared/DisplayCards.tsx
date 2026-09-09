@@ -16,8 +16,18 @@ export function DynamicCourseCard({ course }: { course: Course }) {
       <div>
         <div className={`h-20 bg-gradient-to-br ${color}`} />
         <div className="p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {course.code || "COURSE"}
+          <div className="flex items-center justify-between gap-1">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {course.code || "COURSE"}
+            </div>
+            <div className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider">
+              <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                {course.branch || "ALL"}
+              </span>
+              <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                {course.regulation || "ALL"}
+              </span>
+            </div>
           </div>
           <div className="mt-1 font-bold leading-snug line-clamp-2 min-h-[2.5rem] flex items-center text-foreground">
             {course.name || course.title}

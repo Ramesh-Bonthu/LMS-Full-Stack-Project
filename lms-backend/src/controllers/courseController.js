@@ -127,13 +127,17 @@ exports.markContentComplete = async (req, res) => {
 
 exports.createCourse = async (req, res) => {
   try {
-    const { title, code, description, content } = req.body;
+    const { title, code, description, content, branch, regulation } = req.body;
     if (!title || !code) return res.status(400).json({ message: "Title and code are required" });
 
     let pdfContent = content || "";
     let pdfUrl = "";
 
     if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      if (ext !== ".pdf" && req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({ message: "Only PDF (.pdf) files are allowed for Course Content syllabus." });
+      }
       const extractedText = await extractPdfText(req.file.path);
       if (extractedText) pdfContent = extractedText;
       pdfUrl = `/uploads/${req.file.filename}`;
@@ -145,6 +149,8 @@ exports.createCourse = async (req, res) => {
       description: description || "",
       content: pdfContent,
       pdfUrl: pdfUrl,
+      branch: branch || "ALL",
+      regulation: regulation || "ALL",
       facultyId: req.user.userId,
       facultyName: req.user.name,
       status: req.user.role === "ADMIN" ? "APPROVED" : "PENDING",
@@ -333,6 +339,22 @@ exports.uploadCourseContent = async (req, res) => {
     }
 
     const { name, type } = req.body;
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const reqType = (type || "").toUpperCase();
+
+    if (reqType === "UPLOAD_VIDEO" || req.file.mimetype.includes("video")) {
+      const validVideoExts = [".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v"];
+      if (!validVideoExts.includes(ext) && !req.file.mimetype.startsWith("video/")) {
+        return res.status(400).json({ message: "Only valid video files (.mp4, .webm, .mkv, .avi, .mov) are allowed for Video Upload." });
+      }
+    }
+
+    if (reqType === "PDF_NOTES" || req.file.mimetype.includes("pdf")) {
+      if (ext !== ".pdf" && req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({ message: "Only PDF (.pdf) files are allowed for PDF Document / Notes." });
+      }
+    }
+
     // Store the relative path to the file
     const filePath = `/uploads/${req.file.filename}`;
 
@@ -373,13 +395,6 @@ exports.getCourseStudents = async (req, res) => {
     if (enrolled.length > 0) {
       students = await User.findAll({
         where: { id: enrolled, role: "STUDENT" },
-        attributes: ['id', 'name', 'email', 'role']
-      });
-    }
-    
-    if (students.length === 0) {
-      students = await User.findAll({
-        where: { role: "STUDENT" },
         attributes: ['id', 'name', 'email', 'role']
       });
     }

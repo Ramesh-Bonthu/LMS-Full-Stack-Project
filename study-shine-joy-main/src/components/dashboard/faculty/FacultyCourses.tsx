@@ -19,7 +19,8 @@ import {
   MessageSquare,
   BarChart3,
   Layers,
-  CloudUpload
+  CloudUpload,
+  AlertTriangle
 } from "lucide-react";
 import { type Course, api, API_BASE_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -59,8 +60,34 @@ export function FacultyCourses() {
   const [title, setTitle] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [branch, setBranch] = useState("ALL");
+  const [regulation, setRegulation] = useState("ALL");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [submittingCourse, setSubmittingCourse] = useState(false);
+
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setPdfFile(null);
+      setPdfError(null);
+      return;
+    }
+    const fileNameLower = file.name.toLowerCase();
+    const isPdf = fileNameLower.endsWith(".pdf") || file.type === "application/pdf";
+
+    if (!isPdf) {
+      setPdfFile(null);
+      e.target.value = "";
+      const errMsg = "Upload only .pdf format files for Course Content syllabus.";
+      setPdfError(errMsg);
+      alert(`🚫 ${errMsg}`);
+      return;
+    }
+
+    setPdfFile(file);
+    setPdfError(null);
+  };
 
   // Selected course workspace state
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -80,7 +107,59 @@ export function FacultyCourses() {
   const [contentName, setContentName] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [contentFile, setContentFile] = useState<File | null>(null);
+  const [contentFileError, setContentFileError] = useState<string | null>(null);
   const [uploadingContent, setUploadingContent] = useState(false);
+
+  const handleContentTypeChange = (newType: ContentType) => {
+    setContentType(newType);
+    setContentFile(null);
+    setContentFileError(null);
+  };
+
+  const handleContentFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setContentFile(null);
+      setContentFileError(null);
+      return;
+    }
+    const fileNameLower = file.name.toLowerCase();
+
+    if (contentType === "UPLOAD_VIDEO") {
+      const isVideo =
+        fileNameLower.endsWith(".mp4") ||
+        fileNameLower.endsWith(".webm") ||
+        fileNameLower.endsWith(".mkv") ||
+        fileNameLower.endsWith(".avi") ||
+        fileNameLower.endsWith(".mov") ||
+        fileNameLower.endsWith(".m4v") ||
+        file.type.startsWith("video/");
+
+      if (!isVideo) {
+        setContentFile(null);
+        e.target.value = "";
+        const errMsg = "Upload only valid video format files (.mp4, .webm, .mkv, .avi, .mov).";
+        setContentFileError(errMsg);
+        alert(`🚫 ${errMsg}`);
+        return;
+      }
+    }
+
+    if (contentType === "PDF_NOTES") {
+      const isPdf = fileNameLower.endsWith(".pdf") || file.type === "application/pdf";
+      if (!isPdf) {
+        setContentFile(null);
+        e.target.value = "";
+        const errMsg = "Upload only .pdf format files for PDF Document / Notes.";
+        setContentFileError(errMsg);
+        alert(`🚫 ${errMsg}`);
+        return;
+      }
+    }
+
+    setContentFile(file);
+    setContentFileError(null);
+  };
 
   // Enrolled Students Modal state
   const [isEnrolledModalOpen, setIsEnrolledModalOpen] = useState(false);
@@ -93,20 +172,14 @@ export function FacultyCourses() {
     setLoadingEnrolledStudents(true);
     try {
       const res = await api.getCourseStudents(selectedCourse.id.toString());
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res.success && Array.isArray(res.data)) {
         setEnrolledStudentsList(res.data);
       } else {
-        setEnrolledStudentsList([
-          { id: 1, name: "Vishnu Vardhan", email: "vishnu@vignan.edu" },
-          { id: 2, name: "Lokesh k", email: "lokesh@vignan.edu" }
-        ]);
+        setEnrolledStudentsList([]);
       }
     } catch (err) {
       console.error("Error fetching enrolled students:", err);
-      setEnrolledStudentsList([
-        { id: 1, name: "Vishnu Vardhan", email: "vishnu@vignan.edu" },
-        { id: 2, name: "Lokesh k", email: "lokesh@vignan.edu" }
-      ]);
+      setEnrolledStudentsList([]);
     } finally {
       setLoadingEnrolledStudents(false);
     }
@@ -264,6 +337,8 @@ export function FacultyCourses() {
       formData.append("title", title);
       formData.append("code", code);
       formData.append("description", description);
+      formData.append("branch", branch || "ALL");
+      formData.append("regulation", regulation || "ALL");
       formData.append("pdf", pdfFile);
 
       const res = await api.createCourse(formData);
@@ -271,7 +346,10 @@ export function FacultyCourses() {
         setTitle("");
         setCode("");
         setDescription("");
+        setBranch("ALL");
+        setRegulation("ALL");
         setPdfFile(null);
+        setPdfError(null);
         setIsAddCourseOpen(false);
         await fetchCourses();
         alert("Course created and PDF syllabus processed successfully!");
@@ -328,6 +406,7 @@ export function FacultyCourses() {
         if (res.success) {
           setContentName("");
           setContentFile(null);
+          setContentFileError(null);
           setIsAddContentOpen(false);
           await fetchCourseContents(selectedCourse.id);
         } else {
@@ -911,7 +990,7 @@ export function FacultyCourses() {
                   </label>
                   <select
                     value={contentType}
-                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                    onChange={(e) => handleContentTypeChange(e.target.value as ContentType)}
                     className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/40 transition"
                   >
                     <option value="UPLOAD_VIDEO">01. Upload Video</option>
@@ -923,7 +1002,7 @@ export function FacultyCourses() {
                 {/* CONTENT TITLE */}
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Content Title
+                    Content Title *
                   </label>
                   <input
                     value={contentName}
@@ -937,7 +1016,7 @@ export function FacultyCourses() {
                 {contentType === "YOUTUBE_URL" ? (
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                      YouTube Link URL
+                      YouTube Link URL *
                     </label>
                     <input
                       value={youtubeUrl}
@@ -947,18 +1026,26 @@ export function FacultyCourses() {
                     />
                   </div>
                 ) : (
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                      {contentType === "UPLOAD_VIDEO" ? "Video File" : "PDF File"}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                      {contentType === "UPLOAD_VIDEO" ? "Video File (.mp4, .webm, .mkv, .avi, .mov) *" : "PDF File (.pdf Only) *"}
                     </label>
-                    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm">
+                    <div className={`flex items-center gap-3 rounded-xl border ${contentFileError ? 'border-destructive/60 bg-destructive/5' : 'border-border bg-card'} px-3 py-2 text-sm`}>
                       <input
                         type="file"
-                        accept={contentType === "UPLOAD_VIDEO" ? "video/*" : ".pdf"}
-                        onChange={(e) => setContentFile(e.target.files?.[0] || null)}
+                        accept={contentType === "UPLOAD_VIDEO" ? "video/*,.mp4,.webm,.mkv,.avi,.mov" : "application/pdf,.pdf"}
+                        onChange={handleContentFileSelect}
                         className="w-full text-xs text-muted-foreground file:mr-4 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-foreground hover:file:bg-secondary/80"
                       />
                     </div>
+
+                    {/* Explicit Red Error Box directly below file input */}
+                    {contentFileError && (
+                      <div className="flex items-center gap-2 text-xs font-bold text-destructive bg-destructive/15 p-3 rounded-xl border border-destructive/30 shadow-sm animate-in fade-in slide-in-from-top-1">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+                        <span>{contentFileError}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1083,6 +1170,16 @@ export function FacultyCourses() {
                     <StatusPill status={course.status || "APPROVED"} />
                   </div>
 
+                  {/* Branch & Regulation Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2 text-[10px] uppercase font-bold tracking-wider">
+                    <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      Branch: {course.branch || "ALL"}
+                    </span>
+                    <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      Reg: {course.regulation || "ALL"}
+                    </span>
+                  </div>
+
                   <h4 className="font-display text-lg font-bold group-hover:text-primary transition line-clamp-1">
                     {course.title}
                   </h4>
@@ -1153,7 +1250,7 @@ export function FacultyCourses() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Course Title
+                  Course Title *
                 </label>
                 <input
                   value={title}
@@ -1165,7 +1262,7 @@ export function FacultyCourses() {
 
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Course Code
+                  Course Code *
                 </label>
                 <input
                   value={code}
@@ -1173,6 +1270,64 @@ export function FacultyCourses() {
                   placeholder="Course code (e.g., JAVA101)"
                   className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/40 transition"
                 />
+              </div>
+
+              {/* Target Branch Input */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Target Branch (ALL or Specific)
+                </label>
+                <input
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value.toUpperCase())}
+                  placeholder="e.g. ALL, CSE, ECE, IT..."
+                  className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring/40 transition uppercase"
+                />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {["ALL", "CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AI&DS"].map((b) => (
+                    <button
+                      type="button"
+                      key={b}
+                      onClick={() => setBranch(b)}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${
+                        branch === b
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Academic Regulation Input */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Academic Regulation (ALL or VR23...)
+                </label>
+                <input
+                  value={regulation}
+                  onChange={(e) => setRegulation(e.target.value.toUpperCase())}
+                  placeholder="e.g. ALL, VR23, VR21, AR23..."
+                  className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring/40 transition uppercase"
+                />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {["ALL", "VR23", "VR21", "AR23", "AR21", "R20"].map((reg) => (
+                    <button
+                      type="button"
+                      key={reg}
+                      onClick={() => setRegulation(reg)}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${
+                        regulation === reg
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {reg}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="sm:col-span-2">
@@ -1188,33 +1343,56 @@ export function FacultyCourses() {
                 />
               </div>
 
-              {/* PDF Syllabus Upload Box (Exact match to screenshot #1 & #2) */}
-              <div className="sm:col-span-2 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center transition hover:border-primary/60">
-                <input
-                  type="file"
-                  accept=".pdf"
-                  id="modal-course-pdf-upload"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                  className="hidden"
-                />
-                <label htmlFor="modal-course-pdf-upload" className="cursor-pointer flex flex-col items-center justify-center">
-                  <CloudUpload className="h-9 w-9 text-primary mb-2 animate-pulse" />
-                  <span className="text-sm font-bold text-foreground">
-                    {pdfFile ? `📄 Attached PDF: ${pdfFile.name}` : "Upload Course Content (PDF File Only)"}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1 max-w-md">
-                    {pdfFile
-                      ? `Size: ${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB · Ready to upload`
-                      : "Click to select the official course syllabus PDF document. Text will be automatically extracted for AI Quiz generation."}
-                  </span>
-                </label>
+              {/* PDF Syllabus Upload Box (Strict PDF Validation & Red Warning Banner) */}
+              <div className="sm:col-span-2 space-y-2">
+                <div
+                  className={`rounded-2xl border-2 border-dashed ${
+                    pdfError
+                      ? "border-destructive/60 bg-destructive/5"
+                      : "border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10"
+                  } p-6 text-center transition group`}
+                >
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    id="modal-course-pdf-upload"
+                    onChange={handlePdfSelect}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="modal-course-pdf-upload"
+                    className="cursor-pointer flex flex-col items-center justify-center"
+                  >
+                    <CloudUpload
+                      className={`h-9 w-9 ${
+                        pdfError ? "text-destructive" : "text-primary"
+                      } mb-2 group-hover:scale-110 transition-transform`}
+                    />
+                    <span className="text-sm font-bold text-foreground">
+                      {pdfFile ? `📄 Attached PDF: ${pdfFile.name}` : "Upload Course Content (PDF File Only)"}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1 max-w-md">
+                      {pdfFile
+                        ? `Size: ${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB · Strictly PDF document ready`
+                        : "Click to select the official course syllabus PDF document (.pdf). Non-PDF formats are strictly rejected."}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Explicit Red Error Box directly below Upload Dropzone */}
+                {pdfError && (
+                  <div className="flex items-center gap-2 text-xs font-bold text-destructive bg-destructive/15 p-3 rounded-xl border border-destructive/30 shadow-sm animate-in fade-in slide-in-from-top-1">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+                    <span>{pdfError}</span>
+                  </div>
+                )}
               </div>
 
               <div className="sm:col-span-2 pt-2">
                 <Btn
                   onClick={handleCreateCourse}
                   disabled={submittingCourse}
-                  className="w-full py-3 text-sm font-semibold rounded-xl"
+                  className="w-full py-3 text-sm font-semibold rounded-xl justify-center text-center"
                 >
                   {submittingCourse ? "Processing PDF & Creating Course..." : "Create course"}
                 </Btn>

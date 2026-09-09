@@ -10,6 +10,8 @@ module.exports = (sequelize) => {
     pdfUrl: { type: DataTypes.STRING },
     facultyId: { type: DataTypes.INTEGER },
     facultyName: { type: DataTypes.STRING },
+    branch: { type: DataTypes.STRING, defaultValue: "ALL" },
+    regulation: { type: DataTypes.STRING, defaultValue: "ALL" },
     status: { type: DataTypes.STRING, defaultValue: "PENDING" },
     studentCount: { type: DataTypes.INTEGER, defaultValue: 0 },
     enrolledStudentIds: {

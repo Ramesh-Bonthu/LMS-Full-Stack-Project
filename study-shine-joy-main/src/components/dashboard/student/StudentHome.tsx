@@ -69,7 +69,15 @@ export function StudentHome() {
           const officialOnly = (Array.isArray(announcementsRes.data) ? announcementsRes.data : []).filter(
             (a: any) => !a.category || a.category.toUpperCase() === "ANNOUNCEMENT"
           );
-          setLatestAnnouncements(officialOnly.slice(0, 4));
+          const sortedTop10 = officialOnly
+            .sort((a: any, b: any) => {
+              const timeA = new Date(a.createdAt || 0).getTime();
+              const timeB = new Date(b.createdAt || 0).getTime();
+              if (timeB !== timeA) return timeB - timeA;
+              return (b.id || 0) - (a.id || 0);
+            })
+            .slice(0, 10);
+          setLatestAnnouncements(sortedTop10);
         }
 
         // 4. Fetch Performance Marks Data
@@ -204,10 +212,10 @@ export function StudentHome() {
               <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
                 <Megaphone className="h-5 w-5 text-primary" /> Announcements
               </h3>
-              <span className="text-xs text-muted-foreground font-semibold">Latest Broadcasts</span>
+              <span className="text-xs text-muted-foreground font-semibold">Top 10 Recent</span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
               {latestAnnouncements.length > 0 ? (
                 latestAnnouncements.map((n) => (
                   <div

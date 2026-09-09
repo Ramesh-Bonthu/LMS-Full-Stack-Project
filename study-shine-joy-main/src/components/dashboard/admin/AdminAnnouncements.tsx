@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Megaphone, Edit3, Trash2, Filter, X, Save, CheckCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Megaphone, Edit3, Trash2, Filter, X, Save, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { type Announcement, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 import { toast } from "sonner";
@@ -14,6 +14,10 @@ export function AdminAnnouncements() {
 
   // Audience Filter State
   const [filterAudience, setFilterAudience] = useState<"ALL_FILTER" | "STUDENTS" | "FACULTY" | "ALL">("ALL_FILTER");
+  
+  // Pagination State (Top 10 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Edit Modal State
   const [editItem, setEditItem] = useState<Announcement | null>(null);
@@ -42,6 +46,11 @@ export function AdminAnnouncements() {
   useEffect(() => {
     fetchAnnouncements();
   }, []);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterAudience]);
 
   const handleBroadcast = async () => {
     if (!title.trim() || !body.trim()) {
@@ -140,12 +149,26 @@ export function AdminAnnouncements() {
     }
   };
 
-  // Filtered Items
-  const filteredItems = items.filter((item) => {
-    if (filterAudience === "ALL_FILTER") return true;
-    const itemAud = (item.audience || "ALL").toUpperCase();
-    return itemAud === filterAudience;
-  });
+  // Filtered & Sorted Items (Recently Uploaded First)
+  const sortedFiltered = useMemo(() => {
+    return items
+      .filter((item) => {
+        if (filterAudience === "ALL_FILTER") return true;
+        const itemAud = (item.audience || "ALL").toUpperCase();
+        return itemAud === filterAudience;
+      })
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.id;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.id;
+        return dateB - dateA;
+      });
+  }, [items, filterAudience]);
+
+  const totalPages = Math.ceil(sortedFiltered.length / ITEMS_PER_PAGE) || 1;
+  const paginatedItems = sortedFiltered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <>
@@ -222,53 +245,104 @@ export function AdminAnnouncements() {
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : filteredItems.length > 0 ? (
-          <div className="grid gap-4">
-            {filteredItems.map((item) => {
-              const aud = (item.audience || "ALL").toUpperCase();
-              return (
-                <div key={item.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/40 transition">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`rounded-md px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase ${
-                        aud === "STUDENTS" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
-                        aud === "FACULTY" ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" :
-                        "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                      }`}>
-                        {aud === "STUDENTS" ? "🎓 Students Only" : aud === "FACULTY" ? "🏫 Faculty Only" : "🌐 Campus-Wide (ALL)"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        • {formatRelativeTime(item.createdAt) || item.time || "Just now"}
-                      </span>
+        ) : sortedFiltered.length > 0 ? (
+          <>
+            <div className="grid gap-4">
+              {paginatedItems.map((item) => {
+                const aud = (item.audience || "ALL").toUpperCase();
+                return (
+                  <div key={item.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/40 transition">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`rounded-md px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase ${
+                          aud === "STUDENTS" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                          aud === "FACULTY" ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" :
+                          "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                        }`}>
+                          {aud === "STUDENTS" ? "🎓 Students Only" : aud === "FACULTY" ? "🏫 Faculty Only" : "🌐 Campus-Wide (ALL)"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          • {formatRelativeTime(item.createdAt) || item.time || "Just now"}
+                        </span>
+                      </div>
+
+                      {/* Edit & Delete Action Buttons */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartEdit(item, e)}
+                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary transition bg-secondary/50 px-2.5 py-1 rounded-lg border border-border/50 cursor-pointer"
+                          title="Edit Announcement"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 text-primary" /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(item.id, e)}
+                          className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/20 transition bg-destructive/10 px-2.5 py-1 rounded-lg border border-destructive/20 cursor-pointer"
+                          title="Delete Announcement"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Edit & Delete Action Buttons */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => handleStartEdit(item, e)}
-                        className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary transition bg-secondary/50 px-2.5 py-1 rounded-lg border border-border/50 cursor-pointer"
-                        title="Edit Announcement"
-                      >
-                        <Edit3 className="h-3.5 w-3.5 text-primary" /> Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDelete(item.id, e)}
-                        className="flex items-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/20 transition bg-destructive/10 px-2.5 py-1 rounded-lg border border-destructive/20 cursor-pointer"
-                        title="Delete Announcement"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </button>
-                    </div>
+                    <h4 className="font-bold text-base text-foreground mb-1">{item.title}</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{item.body}</p>
                   </div>
+                );
+              })}
+            </div>
 
-                  <h4 className="font-bold text-base text-foreground mb-1">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{item.body}</p>
+            {/* Pagination Navigation Bar */}
+            {sortedFiltered.length > 0 && (
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-4">
+                <div className="text-xs text-muted-foreground font-medium">
+                  Showing <span className="font-bold text-foreground">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to{" "}
+                  <span className="font-bold text-foreground">
+                    {Math.min(currentPage * ITEMS_PER_PAGE, sortedFiltered.length)}
+                  </span>{" "}
+                  of <span className="font-bold text-foreground">{sortedFiltered.length}</span> announcements
                 </div>
-              );
-            })}
-          </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl border border-border bg-card text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs cursor-pointer"
+                    >
+                      <ChevronLeft className="h-4 w-4" /> Previous
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-8 w-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            currentPage === page
+                              ? "bg-primary text-white shadow-sm"
+                              : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl border border-border bg-card text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs cursor-pointer"
+                    >
+                      Next <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <div className="rounded-2xl border border-dashed border-border p-12 text-center bg-card">
             <Megaphone className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />

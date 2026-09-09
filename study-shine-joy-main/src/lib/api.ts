@@ -52,6 +52,8 @@ export interface Course {
   code: string;
   description?: string;
   content?: string;
+  branch?: string;
+  regulation?: string;
   facultyId?: number;
   facultyName?: string;
   status?: string;
@@ -170,8 +172,17 @@ export interface Resource {
   courseName?: string;
   course?: { id: number; title: string; code?: string };
   category?: string;
+  branch?: string;
+  regulation?: string;
+  fileSize?: number;
+  coverUrl?: string;
+  status?: "APPROVED" | "PENDING_APPROVAL" | "REJECTED";
+  isApproved?: boolean;
+  message?: string;
   createdAt?: string;
 }
+
+
 
 export interface PerformanceRecord {
   subject: string;
@@ -587,8 +598,13 @@ class ApiClient {
   }
 
   // RESOURCE ENDPOINTS
-  async getResources() {
-    return this.request<Resource[]>("/resources", { method: "GET" });
+  async getResources(params?: { branch?: string; regulation?: string; status?: string }) {
+    const queryParts: string[] = [];
+    if (params?.branch) queryParts.push(`branch=${encodeURIComponent(params.branch)}`);
+    if (params?.regulation) queryParts.push(`regulation=${encodeURIComponent(params.regulation)}`);
+    if (params?.status) queryParts.push(`status=${encodeURIComponent(params.status)}`);
+    const queryString = queryParts.length ? `?${queryParts.join("&")}` : "";
+    return this.request<Resource[]>(`/resources${queryString}`, { method: "GET" });
   }
 
   async createResource(data: Partial<Resource> | FormData) {
@@ -601,9 +617,17 @@ class ApiClient {
     });
   }
 
+  async updateResourceStatus(id: number, status: "APPROVED" | "REJECTED") {
+    return this.request<{ message: string; resource?: Resource }>(`/resources/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  }
+
   async deleteResource(id: number) {
     return this.request(`/resources/${id}`, { method: "DELETE" });
   }
+
 
   // PERFORMANCE ENDPOINTS
   async getPerformance() {
@@ -649,8 +673,12 @@ class ApiClient {
     });
   }
 
-  async getEnrollmentTrend() {
-    return this.request("/admin/enrollment-trend", { method: "GET" });
+  async getEnrollmentTrend(filter?: string, date?: string) {
+    const params = new URLSearchParams();
+    if (filter) params.append("filter", filter);
+    if (date) params.append("date", date);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/admin/enrollment-trend${queryString}`, { method: "GET" });
   }
 
   // PROFILE ENDPOINTS

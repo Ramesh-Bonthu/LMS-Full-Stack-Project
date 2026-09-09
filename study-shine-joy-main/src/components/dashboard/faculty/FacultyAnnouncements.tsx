@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Megaphone, Plus, X, Calendar, Users, FileText, Bell } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Megaphone, Plus, X, Calendar, Users, FileText, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { type Announcement, type Course, api, formatRelativeTime } from "@/lib/api";
 import { PageHeader, Card, Btn } from "../../shared/UIPrimitives";
 
@@ -9,6 +9,8 @@ interface FacultyAnnouncementsProps {
   onCloseModal?: () => void;
   onAnnouncementCreated?: () => void;
 }
+
+const ITEMS_PER_PAGE = 10;
 
 export function FacultyAnnouncements({
   course,
@@ -20,6 +22,7 @@ export function FacultyAnnouncements({
   const [selectedCourseId, setSelectedCourseId] = useState<string>(course ? String(course.id) : "");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(isAddAnnouncementOpen);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [title, setTitle] = useState(course ? `${course.title} Update` : "");
   const [body, setBody] = useState("");
@@ -74,7 +77,24 @@ export function FacultyAnnouncements({
 
   useEffect(() => {
     fetchAnnouncements();
+    setCurrentPage(1);
   }, [selectedCourseId]);
+
+  // Sort by createdAt descending (newest top)
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (b.id || 0) - (a.id || 0);
+    });
+  }, [items]);
+
+  const totalPages = Math.ceil(sortedItems.length / ITEMS_PER_PAGE) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedItems, currentPage]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -116,16 +136,21 @@ export function FacultyAnnouncements({
   return (
     <div className="space-y-6">
       <Card className="p-6 shadow-soft">
-        <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 mb-6 gap-4">
           <div>
             <h3 className="text-lg font-bold font-display flex items-center gap-2 text-foreground">
               <Megaphone className="h-5 w-5 text-primary" /> Published Course Announcements
+              {sortedItems.length > 0 && (
+                <span className="text-xs font-semibold text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full ml-1">
+                  {sortedItems.length} Total
+                </span>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              View all official broadcasted updates and announcements sent to students.
+              View top 10 recent official broadcasted updates and announcements sent to students.
             </p>
           </div>
-          <Btn onClick={() => setIsModalOpen(true)} className="text-xs font-bold shadow-glow">
+          <Btn onClick={() => setIsModalOpen(true)} className="text-xs font-bold shadow-glow self-start sm:self-auto">
             <Plus className="h-4 w-4" /> Add Announcement
           </Btn>
         </div>
@@ -134,36 +159,71 @@ export function FacultyAnnouncements({
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : items.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {items.map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary flex items-center gap-1">
-                      <Megaphone className="h-3.5 w-3.5" /> Broadcast #{idx + 1}
-                    </span>
-                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
-                      Official Notice
-                    </span>
+        ) : paginatedItems.length > 0 ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {paginatedItems.map((item, idx) => {
+                const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + idx + 1;
+                return (
+                  <div
+                    key={item.id || idx}
+                    className="rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary flex items-center gap-1">
+                          <Megaphone className="h-3.5 w-3.5" /> Broadcast #{globalIndex}
+                        </span>
+                        <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
+                          Official Notice
+                        </span>
+                      </div>
+                      <h4 className="font-display text-base font-bold text-foreground mb-2">{item.title}</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-3">{item.body}</p>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
+                      <span className="flex items-center gap-1 bg-secondary px-2.5 py-1 rounded-lg">
+                        <Calendar className="h-3 w-3 text-primary" />
+                        {formatRelativeTime(item.createdAt) || item.time || "Just now"}
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                        Active Notice
+                      </span>
+                    </div>
                   </div>
-                  <h4 className="font-display text-base font-bold text-foreground mb-2">{item.title}</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-3">{item.body}</p>
-                </div>
-                <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
-                  <span className="flex items-center gap-1 bg-secondary px-2.5 py-1 rounded-lg">
-                    <Calendar className="h-3 w-3 text-primary" />
-                    {formatRelativeTime(item.createdAt) || item.time || "Just now"}
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-border pt-4 text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, sortedItems.length)} of {sortedItems.length} announcements
+                </span>
+                <div className="flex items-center gap-2">
+                  <Btn
+                    variant="soft"
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 px-3 text-xs gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Previous
+                  </Btn>
+                  <span className="px-2 font-semibold text-foreground">
+                    Page {currentPage} of {totalPages}
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    Active Notice
-                  </span>
+                  <Btn
+                    variant="soft"
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 px-3 text-xs gap-1"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </Btn>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-border p-10 text-center space-y-3">
