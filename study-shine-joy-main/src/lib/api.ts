@@ -669,7 +669,21 @@ class ApiClient {
   }
 
   async uploadCourseContent(courseId: string, formData: FormData) {
-    return this.requestFormData(`/courses/${courseId}/content/upload`, formData);
+    return this.requestFormData<{ message?: string }>(`/courses/${courseId}/content/upload`, formData);
+  }
+
+  async updateCourseContentStatus(contentId: string, status: "APPROVED" | "REJECTED") {
+    return this.request<{ message: string }>(`/courses/content/${contentId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async updateAssignmentStatus(assignmentId: number | string, status: "APPROVED" | "REJECTED") {
+    return this.request<{ message: string }>(`/assignments/${assignmentId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   }
 
   async markContentComplete(courseId: string, contentId: string) {

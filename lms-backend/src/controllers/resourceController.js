@@ -1,6 +1,6 @@
 const path = require("path");
 const { Op } = require("sequelize");
-const { Resource, User, Course } = require("../models");
+const { Resource, User, Course, Notification } = require("../models");
 
 exports.getAllResources = async (req, res) => {
   try {
@@ -33,7 +33,8 @@ exports.getAllResources = async (req, res) => {
         [Op.or]: [
           { status: "APPROVED" },
           { isApproved: true },
-          { [Op.and]: [{ facultyId: currentUserId }, { status: "PENDING_APPROVAL" }] }
+          { [Op.and]: [{ facultyId: currentUserId }, { status: "PENDING_APPROVAL" }] },
+          { [Op.and]: [{ facultyId: currentUserId }, { status: "PENDING_HOD_APPROVAL" }] }
         ]
       });
     } else {
@@ -69,8 +70,8 @@ exports.getAllResources = async (req, res) => {
         ...plain,
         branch: plain.branch || "ALL",
         regulation: plain.regulation || "ALL",
-        status: plain.status || (plain.isApproved === false ? "PENDING_APPROVAL" : "APPROVED"),
-        isApproved: plain.isApproved !== undefined ? plain.isApproved : plain.status !== "PENDING_APPROVAL",
+        status: plain.status || (plain.isApproved === false ? "PENDING_HOD_APPROVAL" : "APPROVED"),
+        isApproved: plain.isApproved !== undefined ? plain.isApproved : plain.status !== "PENDING_HOD_APPROVAL" && plain.status !== "PENDING_APPROVAL",
         facultyName: facName,
         courseName: plain.course ? plain.course.title : (plain.category && plain.category !== "General" ? plain.category : "General"),
       };
@@ -131,13 +132,13 @@ exports.createResource = async (req, res) => {
       return res.status(400).json({ message: "Title and file/URL are required" });
     }
 
-    // 50MB threshold for Admin approval
+    // 50MB threshold for Admin/HOD approval
     const FIFTY_MB = 50 * 1024 * 1024;
     let resourceStatus = "APPROVED";
     let isApproved = true;
 
-    if (fileSizeInBytes > FIFTY_MB && userRole !== "ADMIN") {
-      resourceStatus = "PENDING_APPROVAL";
+    if (fileSizeInBytes > FIFTY_MB && userRole !== "ADMIN" && userRole !== "HOD") {
+      resourceStatus = "PENDING_HOD_APPROVAL";
       isApproved = false;
     }
 
@@ -162,10 +163,31 @@ exports.createResource = async (req, res) => {
       courseId ? Course.findByPk(courseId) : Promise.resolve(null),
     ]);
 
+    if (!isApproved) {
+      const hods = await User.findAll({
+        where: {
+          [Op.or]: [
+            { role: "ADMIN" },
+            { role: "HOD" },
+            { branch: resource.branch || req.user?.branch || "CSE" }
+          ]
+        }
+      });
+      if (hods.length > 0) {
+        const notifications = hods.map(h => ({
+          userId: h.id,
+          title: "Pending HOD Approval (>50MB Resource)",
+          message: `Faculty ${user ? user.name : "Instructor"} uploaded resource "${resource.title}" (${(fileSizeInBytes / (1024 * 1024)).toFixed(1)}MB). Department HOD approval required to publish.`,
+          type: "WARNING",
+          isRead: false
+        }));
+        await Notification.bulkCreate(notifications);
+      }
+    }
 
     const plain = resource.toJSON();
     const noticeMessage = !isApproved
-      ? "Resource uploaded successfully. Because file size exceeds 50MB, it requires Admin approval before being published to students."
+      ? "Resource uploaded successfully. Because file size exceeds 50MB, it requires Department HOD approval before being published to students."
       : "Resource uploaded & published successfully.";
 
     return res.status(201).json({

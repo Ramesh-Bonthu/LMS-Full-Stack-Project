@@ -7,5 +7,8 @@ module.exports = (sequelize) => {
     name: { type: DataTypes.STRING },
     type: { type: DataTypes.STRING },
     link: { type: DataTypes.STRING },
+    fileSize: { type: DataTypes.INTEGER, defaultValue: 0 },
+    status: { type: DataTypes.STRING, defaultValue: "APPROVED" },
+    isApproved: { type: DataTypes.BOOLEAN, defaultValue: true },
   });
 };

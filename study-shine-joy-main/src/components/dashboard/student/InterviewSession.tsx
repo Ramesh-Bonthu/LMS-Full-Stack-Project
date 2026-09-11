@@ -74,13 +74,13 @@ export function StructuredFeedbackCard({ feedback }: { feedback: string }) {
     });
 
     if (strengths.length === 0) {
-      strengths = ["Clear conversational tone & polite demeanor", "Engaged directly with the interview questions"];
+      strengths = ["Demonstrated willingness and active engagement throughout the mock interview", "Responded clearly to questions presented during the session"];
     }
     if (weaknesses.length === 0) {
-      weaknesses = ["Initial response lacked technical depth & specific examples", "Could expand more on core concept definitions"];
+      weaknesses = ["Could expand explanations with more specific technical definitions", "Provide concrete code examples and handle edge cases"];
     }
     if (improvements.length === 0) {
-      improvements = ["Practice structuring answers with real-world scenarios", "Review core technical terminology and definitions"];
+      improvements = ["Practice structuring responses using the STAR method", "Review core technical concepts and write practical code scenarios"];
     }
 
     return { strengths, weaknesses, improvements, summary: summary.trim() };
@@ -246,10 +246,8 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
   const speakText = (text: string) => {
     if (!isAudioOn) return;
     
-    // Clean text for Text-to-Speech: remove parentheticals, markdown, dashes, special symbols
+    // Clean text for Text-to-Speech: remove markdown symbols, dashes, and extra whitespace
     const cleanText = text
-      .replace(/\(.*?\)/g, '')
-      .replace(/\[.*?\]/g, '')
       .replace(/[*#_\-\|\~\`\>\/]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();

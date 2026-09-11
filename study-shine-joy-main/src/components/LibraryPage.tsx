@@ -243,8 +243,8 @@ export function LibraryPage() {
 
         const res = await api.createResource(formData);
         if (res.success) {
-          if (res.data?.status === "PENDING_APPROVAL" || res.data?.isApproved === false) {
-            toast.info("Resource exceeds 50MB! Uploaded successfully and submitted for Admin Approval.", { duration: 6000 });
+          if (res.data?.status === "PENDING_APPROVAL" || res.data?.status === "PENDING_HOD_APPROVAL" || res.data?.isApproved === false) {
+            toast.info(res.data?.message || "Resource exceeds 50MB! Uploaded successfully and submitted for Department HOD Approval.", { duration: 6000 });
           } else {
             toast.success("Resource file uploaded & added to library!");
           }

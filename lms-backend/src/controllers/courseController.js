@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const { Course, CourseContent, User, Notification } = require("../models");
 const fs = require("fs");
 const path = require("path");
@@ -89,6 +90,14 @@ exports.getAllCourses = async (req, res) => {
   
   if (role === "STUDENT") {
     whereClause = { status: "APPROVED" };
+  } else if (role === "FACULTY") {
+    const facultyId = req.user.userId || req.user.id;
+    whereClause = {
+      [Op.or]: [
+        { facultyId: facultyId },
+        { facultyName: req.user.name || "" }
+      ]
+    };
   }
 
   const courses = await Course.findAll({ 
@@ -348,7 +357,20 @@ exports.rejectCourse = async (req, res) => {
 };
 
 exports.getCourseContent = async (req, res) => {
-  const content = await CourseContent.findAll({ where: { courseId: req.params.id } });
+  const role = String(req.user?.role || "").toUpperCase();
+  const andConditions = [{ courseId: req.params.id }];
+  
+  if (role === "STUDENT") {
+    andConditions.push({
+      [Op.or]: [
+        { isApproved: true },
+        { status: "APPROVED" },
+        { status: null }
+      ]
+    });
+  }
+
+  const content = await CourseContent.findAll({ where: { [Op.and]: andConditions } });
   return res.json(content);
 };
 
@@ -367,6 +389,8 @@ exports.addCourseContent = async (req, res) => {
       name: name || "Untitled Resource",
       link: url || link, 
       type: type || "youtube",
+      status: "APPROVED",
+      isApproved: true,
     });
 
     // Notify enrolled students
@@ -419,33 +443,106 @@ exports.uploadCourseContent = async (req, res) => {
       }
     }
 
-    // Store the relative path to the file
     const filePath = `/uploads/${req.file.filename}`;
+    const fileSizeInBytes = req.file.size || 0;
+    const FIFTY_MB = 50 * 1024 * 1024;
+    const userRole = String(req.user?.role || "").toUpperCase();
+    const isOver50MB = fileSizeInBytes > FIFTY_MB && userRole !== "ADMIN" && userRole !== "HOD";
+
+    const contentStatus = isOver50MB ? "PENDING_HOD_APPROVAL" : "APPROVED";
+    const isApproved = !isOver50MB;
 
     const content = await CourseContent.create({
       courseId: req.params.id,
       name: name || req.file.originalname,
       link: filePath,
       type: type || (req.file.mimetype.includes("video") ? "video" : "pdf"),
+      fileSize: fileSizeInBytes,
+      status: contentStatus,
+      isApproved: isApproved,
     });
 
-    // Notify enrolled students
-    const enrolledIds = course.enrolledStudentIds || [];
-    if (enrolledIds.length > 0) {
-      const notifications = enrolledIds.map(studentId => ({
-        userId: studentId,
-        title: "New Course Content",
-        message: `New content "${content.name}" has been added to your course "${course.title}".`,
-        type: "INFO",
-        isRead: false
-      }));
-      await Notification.bulkCreate(notifications);
+    if (isOver50MB) {
+      const hods = await User.findAll({
+        where: {
+          [Op.or]: [
+            { role: "ADMIN" },
+            { role: "HOD" },
+            { branch: course.branch || req.user.branch || "CSE" }
+          ]
+        }
+      });
+      if (hods.length > 0) {
+        const notifications = hods.map(h => ({
+          userId: h.id,
+          title: "Pending HOD Approval (>50MB File)",
+          message: `Faculty ${req.user?.name || "Instructor"} uploaded "${content.name}" (${(fileSizeInBytes / (1024 * 1024)).toFixed(1)}MB) in course "${course.title}". Department HOD approval required to publish.`,
+          type: "WARNING",
+          isRead: false
+        }));
+        await Notification.bulkCreate(notifications);
+      }
+    } else {
+      // Notify enrolled students immediately if <= 50MB
+      const enrolledIds = course.enrolledStudentIds || [];
+      if (enrolledIds.length > 0) {
+        const notifications = enrolledIds.map(studentId => ({
+          userId: studentId,
+          title: "New Course Content",
+          message: `New content "${content.name}" has been added to your course "${course.title}".`,
+          type: "INFO",
+          isRead: false
+        }));
+        await Notification.bulkCreate(notifications);
+      }
     }
 
-    return res.status(201).json(content);
+    const responseMsg = isOver50MB 
+      ? "Content uploaded successfully! File size exceeds 50MB and requires Department HOD approval before publishing to students."
+      : "Content uploaded & published successfully.";
+
+    return res.status(201).json({ ...content.toJSON(), message: responseMsg });
   } catch (error) {
     console.error("Error uploading course content:", error);
     return res.status(500).json({ message: "Error uploading course content", error: error.message });
+  }
+};
+
+exports.updateCourseContentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const content = await CourseContent.findByPk(id);
+    if (!content) return res.status(404).json({ message: "Course content not found" });
+
+    if (status === "REJECTED") {
+      await content.destroy();
+      return res.json({ message: "Course content rejected and removed" });
+    }
+
+    content.status = "APPROVED";
+    content.isApproved = true;
+    await content.save();
+
+    const course = await Course.findByPk(content.courseId);
+    if (course) {
+      const enrolledIds = course.enrolledStudentIds || [];
+      if (enrolledIds.length > 0) {
+        const notifications = enrolledIds.map(studentId => ({
+          userId: studentId,
+          title: "New Course Content",
+          message: `New content "${content.name}" has been approved and published in "${course.title}".`,
+          type: "INFO",
+          isRead: false
+        }));
+        await Notification.bulkCreate(notifications);
+      }
+    }
+
+    return res.json({ message: "Course content approved and published!", content });
+  } catch (error) {
+    return res.status(500).json({ message: "Error updating content status", error: error.message });
   }
 };
 

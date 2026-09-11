@@ -17,4 +17,6 @@ router.post("/:id/submit", verifyToken, requireRole("STUDENT"), upload.single("f
 router.get("/:id/submissions", verifyToken, requireRole("FACULTY", "ADMIN"), assignmentController.getAssignmentSubmissions);
 router.put("/submissions/:id/grade", verifyToken, requireRole("FACULTY", "ADMIN"), assignmentController.gradeSubmission);
 
+router.patch("/:id/status", verifyToken, requireRole("HOD", "ADMIN"), assignmentController.updateAssignmentStatus);
+
 module.exports = router;

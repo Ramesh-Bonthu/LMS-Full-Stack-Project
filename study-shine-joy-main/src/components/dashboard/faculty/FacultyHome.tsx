@@ -17,14 +17,27 @@ export function FacultyHome() {
       try {
         setLoading(true);
         const coursesRes = await api.getCourses();
+        let facultyCourses: Course[] = [];
         if (coursesRes.success && coursesRes.data) {
           const all = Array.isArray(coursesRes.data) ? coursesRes.data : [];
-          setCourses(all.filter(c => c.status?.toUpperCase() !== "REJECTED"));
+          const facultyId = user?.userId || user?.id;
+          const facultyName = (user?.name || "").toLowerCase().trim();
+
+          facultyCourses = all.filter((c) => {
+            if (c.status?.toUpperCase() === "REJECTED") return false;
+            const matchesId = facultyId && String(c.facultyId) === String(facultyId);
+            const matchesName = facultyName && (c.facultyName || "").toLowerCase().trim() === facultyName;
+            return matchesId || matchesName;
+          });
+          setCourses(facultyCourses);
         }
 
         const submissionsRes = await api.getSubmissions();
         if (submissionsRes.success && submissionsRes.data) {
-          setSubmissions(Array.isArray(submissionsRes.data) ? submissionsRes.data.slice(0, 4) : []);
+          const allSubs = Array.isArray(submissionsRes.data) ? submissionsRes.data : [];
+          const facultyCourseIds = new Set(facultyCourses.map((c) => c.id));
+          const filteredSubs = allSubs.filter((s) => s.assignmentId && facultyCourseIds.has(s.assignmentId));
+          setSubmissions(filteredSubs.slice(0, 4));
         }
       } catch (error) {
         console.error("Error fetching faculty data:", error);
@@ -33,8 +46,10 @@ export function FacultyHome() {
       }
     };
 
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const activeCourses = courses.filter((c) => c.status?.toUpperCase() === "APPROVED").length;
   const totalStudents = courses.reduce((acc, c) => acc + (c.studentCount || 0), 0);

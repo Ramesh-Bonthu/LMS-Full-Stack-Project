@@ -324,7 +324,8 @@ export function FacultyAssignments({
 
       const res = await api.createAssignment(formData);
       if (res.success) {
-        alert("Assignment published successfully!");
+        const msg = res.data?.message || "Assignment published successfully!";
+        alert(msg);
         setTitle("");
         setDeadline("");
         setDescription("");

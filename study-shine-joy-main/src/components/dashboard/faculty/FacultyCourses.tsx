@@ -214,14 +214,17 @@ export function FacultyCourses() {
       setLoading(true);
       const res = await api.getCourses();
       if (res.success && res.data) {
-        const facultyId = Number(user?.userId || user?.id || 0);
+        const facultyId = user?.userId || user?.id;
+        const facultyName = (user?.name || "").toLowerCase().trim();
         setCourses(
           Array.isArray(res.data)
-            ? res.data.filter(
-                (course) =>
-                  (course.facultyId === facultyId || user?.role === "admin") &&
-                  course.status?.toUpperCase() !== "REJECTED"
-              )
+            ? res.data.filter((course) => {
+                if (course.status?.toUpperCase() === "REJECTED") return false;
+                if (user?.role === "admin") return true;
+                const matchesId = facultyId && String(course.facultyId) === String(facultyId);
+                const matchesName = facultyName && (course.facultyName || "").toLowerCase().trim() === facultyName;
+                return matchesId || matchesName;
+              })
             : []
         );
       }
@@ -434,6 +437,8 @@ export function FacultyCourses() {
 
         const res = await api.uploadCourseContent(selectedCourse.id.toString(), formData);
         if (res.success) {
+          const msg = res.data?.message || "Uploaded successfully!";
+          alert(msg);
           setContentName("");
           setContentFile(null);
           setContentFileError(null);

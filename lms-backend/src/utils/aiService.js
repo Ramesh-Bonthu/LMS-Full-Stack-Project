@@ -20,16 +20,12 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 const GROQ_MODELS = [
-  process.env.GROQ_MODEL || "openai/gpt-oss-120b",
-  "openai/gpt-oss-120b",
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-  "gemma2-9b-it"
-].filter(Boolean);
+  "openai/gpt-oss-20b"
+];
 
 const GEMINI_MODELS = [
+  "gemini-2.5-flash",
   "gemini-1.5-flash",
-  "gemini-2.0-flash",
   "gemini-1.5-pro"
 ];
 
@@ -42,23 +38,19 @@ async function generateCompletion({ prompt, systemPrompt = "", messages = [], js
     for (const model of GROQ_MODELS) {
       try {
         const groqMessages = [];
-        let combinedText = "";
 
         if (systemPrompt) {
-          combinedText += `SYSTEM INSTRUCTION:\n${systemPrompt}\n\n`;
-        }
-
-        if (prompt) {
-          combinedText += prompt;
-        }
-
-        if (jsonMode) {
-          combinedText += "\n\nIMPORTANT: Respond ONLY with a valid raw JSON object matching the requested schema. Do not include markdown text formatting outside of JSON.";
+          groqMessages.push({ role: "system", content: systemPrompt });
         }
 
         if (messages && messages.length > 0) {
           groqMessages.push(...messages);
         } else {
+          let combinedText = "";
+          if (prompt) combinedText += prompt;
+          if (jsonMode) {
+            combinedText += "\n\nIMPORTANT: Respond ONLY with a valid raw JSON object matching the requested schema. Do not include markdown text formatting outside of JSON.";
+          }
           groqMessages.push({ role: "user", content: combinedText.trim() });
         }
 

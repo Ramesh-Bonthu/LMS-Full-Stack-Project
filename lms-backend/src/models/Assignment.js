@@ -10,5 +10,8 @@ module.exports = (sequelize) => {
     courseName: { type: DataTypes.STRING },
     deadline: { type: DataTypes.DATE },
     totalMarks: { type: DataTypes.INTEGER, defaultValue: 100 },
+    fileSize: { type: DataTypes.INTEGER, defaultValue: 0 },
+    status: { type: DataTypes.STRING, defaultValue: "APPROVED" },
+    isApproved: { type: DataTypes.BOOLEAN, defaultValue: true },
   });
 };
