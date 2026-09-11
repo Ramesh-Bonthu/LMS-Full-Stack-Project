@@ -106,18 +106,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Fixed Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 md:flex h-screen sticky top-0 overflow-y-auto">
-        <Link to="/" className="mb-8 flex items-center gap-2 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" />
+      <aside className="hidden w-[270px] shrink-0 flex-col border-r border-[#121b38] bg-[#070c1e] p-4.5 text-white md:flex h-screen sticky top-0 overflow-y-auto">
+        <Link to="/" className="mb-8 flex items-center gap-3 px-1.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-white shadow-md shadow-blue-500/25">
+            <GraduationCap className="h-5.5 w-5.5 stroke-[2.2]" />
           </div>
           <div>
-            <div className="font-display text-base font-bold leading-tight">Vignan's LMS</div>
-            <div className="text-[11px] text-muted-foreground">{meta.label} workspace</div>
+            <div className="font-display text-xl font-extrabold tracking-tight leading-tight text-white">Vignan's LMS</div>
+            <div className="text-[12px] font-medium text-slate-400 capitalize">{meta.label} workspace</div>
           </div>
         </Link>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1.5">
           {items.map((item) => {
             const active = currentSub === item.to;
             return (
@@ -125,14 +125,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 key={item.to || "home"}
                 to="/dashboard/$role/$section"
                 params={{ role, section: item.to || "home" }}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-[14.5px] font-semibold transition-all duration-200 ${
                   active
-                    ? "bg-primary-soft text-primary font-bold shadow-sm"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    ? "bg-[#172454] text-[#3b82f6] shadow-sm border border-[#2b3a78]/50 font-bold"
+                    : "text-slate-100 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
+                <item.icon className={`h-5 w-5 stroke-[2.2] ${active ? "text-[#3b82f6]" : "text-white"}`} />
+                <span>{item.label}</span>
               </Link>
             );
           })}
@@ -140,9 +140,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <button
           onClick={handleLogout}
-          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-destructive"
+          className="mt-4 flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-[14.5px] font-semibold text-slate-300 transition-all duration-200 hover:bg-white/10 hover:text-rose-400"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-5 w-5 stroke-[2]" />
           Logout
         </button>
       </aside>

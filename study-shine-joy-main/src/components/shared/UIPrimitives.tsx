@@ -34,21 +34,23 @@ export function Card({
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    Pending: "bg-warn/20 text-warn-foreground",
-    Submitted: "bg-primary-soft text-primary",
-    Evaluated: "bg-success/20 text-success-foreground",
-    Approved: "bg-success/20 text-success-foreground",
-    Active: "bg-success/20 text-success-foreground",
-    Rejected: "bg-destructive/15 text-destructive",
-  };
+  const s = (status || "").toUpperCase();
+  let style = "bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60";
+  if (s === "PENDING") {
+    style = "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30";
+  } else if (s === "REJECTED") {
+    style = "bg-destructive/15 text-destructive border border-destructive/30";
+  } else if (s === "SUBMITTED") {
+    style = "bg-blue-50 text-[#2563eb] border border-blue-200/60";
+  }
+
+  const formattedStatus = s ? s.charAt(0) + s.slice(1).toLowerCase() : "";
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        map[status] ?? "bg-secondary text-secondary-foreground"
-      }`}
+      className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0 whitespace-nowrap ${style}`}
     >
-      {status}
+      {formattedStatus}
     </span>
   );
 }
@@ -62,15 +64,17 @@ export function Btn({
   variant?: "primary" | "ghost" | "soft";
 }) {
   const styles = {
-    primary: "bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95",
-    ghost: "border border-border bg-card hover:bg-secondary",
-    soft: "bg-primary-soft text-primary hover:bg-primary-soft/70",
-  }[variant as string] || "bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95";
+    primary: "bg-[#2563eb] text-white hover:bg-[#1d4ed8] shadow-sm font-bold border border-transparent",
+    ghost: "border border-border bg-card text-foreground hover:bg-secondary font-medium",
+    soft: "bg-[#2563eb] text-white hover:bg-[#1d4ed8] shadow-sm font-bold border border-transparent",
+    destructive: "bg-[#dc2626] text-white hover:bg-[#b91c1c] shadow-sm font-bold",
+    dark: "bg-[#0f172a] text-white hover:bg-[#1e293b] shadow-sm font-semibold",
+  }[variant as string] || "bg-[#2563eb] text-white hover:bg-[#1d4ed8] shadow-sm font-bold";
 
   return (
     <button
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${styles} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4.5 py-2 text-sm font-bold transition ${styles} ${className}`}
     >
       {children}
     </button>

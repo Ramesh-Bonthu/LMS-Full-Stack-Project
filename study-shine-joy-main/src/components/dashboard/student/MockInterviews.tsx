@@ -101,7 +101,7 @@ export function MockInterviews() {
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight">
             AI Mock Interviews
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
@@ -111,7 +111,7 @@ export function MockInterviews() {
         
         <Dialog>
           <DialogTrigger asChild>
-            <Button size="lg" className="rounded-full px-8 shadow-lg hover:shadow-xl transition-all gap-2 bg-primary text-white">
+            <Button size="lg" className="rounded-full px-8 shadow-sm transition-all gap-2 bg-[#2563eb] text-white hover:bg-[#1d4ed8] font-bold">
               <PlayCircle className="w-5 h-5" />
               New Interview
             </Button>

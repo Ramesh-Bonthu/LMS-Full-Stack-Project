@@ -125,7 +125,7 @@ export function ProfilePage({ role }: { role: Role }) {
         <div className="space-y-6">
           <Card className="text-center">
             <div className="relative mx-auto mb-4 h-32 w-32">
-              <div className="flex h-full w-full items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-accent text-5xl font-bold text-white shadow-xl">
+              <div className="flex h-full w-full items-center justify-center rounded-3xl bg-[#2563eb] text-5xl font-bold text-white shadow-xl">
                 {profile?.name?.[0] || role?.[0].toUpperCase()}
               </div>
               {isEditing && (

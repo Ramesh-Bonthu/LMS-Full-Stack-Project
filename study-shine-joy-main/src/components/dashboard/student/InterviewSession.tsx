@@ -351,7 +351,7 @@ export function InterviewSession({ session, onEnd }: InterviewSessionProps) {
     return (
       <div className="p-6 max-w-4xl mx-auto space-y-6 animate-in zoom-in duration-500">
         <Card className="overflow-hidden border border-border shadow-2xl rounded-3xl bg-card">
-          <div className="bg-gradient-primary p-8 text-white text-center space-y-4">
+          <div className="bg-[#2563eb] p-8 text-white text-center space-y-4">
             <div className="inline-flex p-4 bg-white/20 rounded-2xl backdrop-blur">
               <Sparkles className="w-10 h-10 text-white" />
             </div>

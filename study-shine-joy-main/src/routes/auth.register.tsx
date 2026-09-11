@@ -265,7 +265,7 @@ function RegisterPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-gradient-primary py-3 font-medium text-primary-foreground shadow-glow transition hover:opacity-95 disabled:opacity-50"
+                    className="w-full rounded-xl bg-[#2563eb] text-white hover:bg-[#1d4ed8] py-3 font-bold shadow-sm transition disabled:opacity-50"
                   >
                     {isLoading ? (
                       <span className="inline-flex items-center gap-2">
@@ -322,7 +322,7 @@ function RegisterPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full rounded-xl bg-gradient-primary py-3 font-medium text-primary-foreground shadow-glow transition hover:opacity-95 disabled:opacity-50"
+                    className="w-full rounded-xl bg-[#2563eb] text-white hover:bg-[#1d4ed8] py-3 font-bold shadow-sm transition disabled:opacity-50"
                   >
                     {isLoading ? (
                       <span className="inline-flex items-center gap-2">

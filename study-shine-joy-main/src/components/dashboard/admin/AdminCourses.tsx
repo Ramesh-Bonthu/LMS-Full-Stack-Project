@@ -4,6 +4,15 @@ import { useAuth } from "@/lib/auth";
 import { FileText } from "lucide-react";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
 
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export function AdminCourses() {
   const { user: currentUser } = useAuth();
   const isSuperAdmin = currentUser?.email === "admin@example.com";
@@ -43,35 +52,36 @@ export function AdminCourses() {
 
   return (
     <>
-      <PageHeader 
-        title={!isSuperAdmin && hodBranch ? `Course Approvals (${hodBranch} Department)` : "Course approvals"} 
-        subtitle={!isSuperAdmin && hodBranch ? `Review course registration proposals submitted by ${hodBranch} department faculty.` : "Review courses submitted by faculty."} 
+      <PageHeader
+        title={!isSuperAdmin && hodBranch ? `Course Approvals (${hodBranch} Department)` : "Course approvals"}
+        subtitle={!isSuperAdmin && hodBranch ? `Review course registration proposals submitted by ${hodBranch} department faculty.` : "Review courses submitted by faculty."}
       />
       <div className="grid gap-4 md:grid-cols-2">
         {courses.map((course) => (
           <Card key={course.id}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="font-display text-lg font-bold">{course.title} ({course.code})</div>
-                <div className="text-xs text-muted-foreground mb-2">
-                  Submitted by {course.facultyName || "Faculty"}
-                </div>
-                <div className="flex flex-wrap items-center gap-1 text-[10px] uppercase font-bold tracking-wider mb-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                    Dept: {course.branch || "ALL"}
-                  </span>
-                  <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
-                    {course.year || "ALL Years"}
-                  </span>
-                  <span className="text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
-                    {course.sem || "ALL Sems"}
-                  </span>
-                  <span className="text-pink-600 dark:text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/20">
-                    Sec: {course.section || "ALL"}
-                  </span>
-                </div>
-              </div>
+            {/* Row 1: Title/Code (Left) & Status Pill (Right) */}
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="font-display text-lg font-bold">{course.title} ({course.code})</div>
               <StatusPill status={course.status || "PENDING"} />
+            </div>
+            <div className="text-xs text-muted-foreground mb-2.5">
+              Submitted by {course.facultyName || "Faculty"}
+            </div>
+
+            {/* Row 2: Department, Year, Sem & Section Badges */}
+            <div className="flex items-center gap-1.5 mb-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+              <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                Dept: {toTitleCase(course.branch || "All")}
+              </span>
+              <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                {toTitleCase(course.year || "All Years")}
+              </span>
+              <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                {toTitleCase(course.sem || "All Sems")}
+              </span>
+              <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                Sec: {toTitleCase((course.section || "All").replace(/section\s*/i, "").trim())}
+              </span>
             </div>
 
             {course.pdfUrl && (

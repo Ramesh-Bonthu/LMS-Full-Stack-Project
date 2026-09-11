@@ -45,7 +45,14 @@ import { FacultyAnnouncements } from "./FacultyAnnouncements";
 import { CourseDiscussionForum } from "../shared/CourseDiscussionForum";
 
 type ContentType = "UPLOAD_VIDEO" | "YOUTUBE_URL" | "PDF_NOTES";
-type CourseTab = "modules" | "quizzes" | "assignments" | "submissions" | "attendance" | "announcements" | "discussion" | "analytics";
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 export function FacultyCourses() {
   const { user } = useAuth();
@@ -219,12 +226,12 @@ export function FacultyCourses() {
         setCourses(
           Array.isArray(res.data)
             ? res.data.filter((course) => {
-                if (course.status?.toUpperCase() === "REJECTED") return false;
-                if (user?.role === "admin") return true;
-                const matchesId = facultyId && String(course.facultyId) === String(facultyId);
-                const matchesName = facultyName && (course.facultyName || "").toLowerCase().trim() === facultyName;
-                return matchesId || matchesName;
-              })
+              if (course.status?.toUpperCase() === "REJECTED") return false;
+              if (user?.role === "admin") return true;
+              const matchesId = facultyId && String(course.facultyId) === String(facultyId);
+              const matchesName = facultyName && (course.facultyName || "").toLowerCase().trim() === facultyName;
+              return matchesId || matchesName;
+            })
             : []
         );
       }
@@ -557,11 +564,10 @@ export function FacultyCourses() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id as CourseTab)}
-                  className={`flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-3 text-[13px] font-semibold rounded-t-xl transition text-center border-b-2 w-full ${
-                    active
-                      ? "border-primary text-primary bg-primary/10 shadow-sm"
-                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                  }`}
+                  className={`flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-3 text-[13px] font-semibold rounded-t-xl transition text-center border-b-2 w-full ${active
+                    ? "border-primary text-primary bg-primary/10 shadow-sm"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="whitespace-nowrap">{tab.label}</span>
@@ -1198,26 +1204,27 @@ export function FacultyCourses() {
                 className="group relative cursor-pointer border border-border bg-card p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-xl hover:border-primary/40 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                  {/* Row 1: Course Code (Left) & Status Pill (Right) */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
                       {course.code || "COURSE"}
                     </span>
                     <StatusPill status={course.status || "APPROVED"} />
                   </div>
 
-                  {/* Branch, Year, Sem, Section & Regulation Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2 text-[10px] uppercase font-bold tracking-wider">
-                    <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                      Dept: {course.branch || "ALL"}
+                  {/* Row 2: Department, Year, Sem & Section Badges */}
+                  <div className="flex items-center gap-1.5 mb-3 overflow-x-auto no-scrollbar whitespace-nowrap">
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                      Dept: {toTitleCase(course.branch || "All")}
                     </span>
-                    <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
-                      {course.year || "ALL Years"}
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                      {toTitleCase(course.year || "All Years")}
                     </span>
-                    <span className="text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
-                      {course.sem || "ALL Sems"}
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                      {toTitleCase(course.sem || "All Sems")}
                     </span>
-                    <span className="text-pink-600 dark:text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/20">
-                      Sec: {course.section || "ALL"}
+                    <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                      Sec: {toTitleCase((course.section || "All").replace(/section\s*/i, "").trim())}
                     </span>
                   </div>
 
@@ -1233,17 +1240,17 @@ export function FacultyCourses() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
                     {course.pdfUrl ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full font-semibold">
-                        <FileText className="h-3.5 w-3.5" /> PDF Syllabus Attached
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                        <FileText className="h-3.5 w-3.5 shrink-0" /> PDF Syllabus Attached
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-muted-foreground bg-secondary px-2.5 py-1 rounded-full font-medium">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary text-muted-foreground px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
                         No PDF
                       </span>
                     )}
 
-                    <span className="inline-flex items-center gap-1 text-muted-foreground bg-secondary px-2.5 py-1 rounded-full font-medium">
-                      <Users className="h-3.5 w-3.5" /> {course.studentCount || 0} Students
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
+                      <Users className="h-3.5 w-3.5 text-slate-900 dark:text-slate-100 shrink-0" /> {course.studentCount || 0} Students
                     </span>
                   </div>
                 </div>
@@ -1324,11 +1331,10 @@ export function FacultyCourses() {
                       type="button"
                       key={b}
                       onClick={() => setBranch(b)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${
-                        branch === b
-                          ? "bg-primary text-primary-foreground shadow-sm scale-105"
-                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                      }`}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${branch === b
+                        ? "bg-primary text-primary-foreground shadow-sm scale-105"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                        }`}
                     >
                       {b}
                     </button>
@@ -1423,11 +1429,10 @@ export function FacultyCourses() {
               {/* PDF Syllabus Upload Box (Strict PDF Validation & Red Warning Banner) */}
               <div className="sm:col-span-2 space-y-2">
                 <div
-                  className={`rounded-2xl border-2 border-dashed ${
-                    pdfError
-                      ? "border-destructive/60 bg-destructive/5"
-                      : "border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10"
-                  } p-6 text-center transition group`}
+                  className={`rounded-2xl border-2 border-dashed ${pdfError
+                    ? "border-destructive/60 bg-destructive/5"
+                    : "border-primary/30 hover:border-primary/60 bg-primary/5 hover:bg-primary/10"
+                    } p-6 text-center transition group`}
                 >
                   <input
                     type="file"
@@ -1441,9 +1446,8 @@ export function FacultyCourses() {
                     className="cursor-pointer flex flex-col items-center justify-center"
                   >
                     <CloudUpload
-                      className={`h-9 w-9 ${
-                        pdfError ? "text-destructive" : "text-primary"
-                      } mb-2 group-hover:scale-110 transition-transform`}
+                      className={`h-9 w-9 ${pdfError ? "text-destructive" : "text-primary"
+                        } mb-2 group-hover:scale-110 transition-transform`}
                     />
                     <span className="text-sm font-bold text-foreground">
                       {pdfFile ? `📄 Attached PDF: ${pdfFile.name}` : "Upload Course Content (PDF File Only)"}

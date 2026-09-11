@@ -337,7 +337,7 @@ export function AdminReports() {
         action={
           <button
             onClick={exportAllReportsCSV}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-4 py-2.5 shadow-md transition-all transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs px-4 py-2.5 shadow-sm transition-all transform active:scale-95 cursor-pointer"
           >
             <Download className="h-4 w-4" /> Export Full CSV Report
           </button>

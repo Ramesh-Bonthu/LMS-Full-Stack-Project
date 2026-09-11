@@ -71,9 +71,9 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.04 260);
 
-  --primary: oklch(0.62 0.14 245);
-  --primary-foreground: oklch(0.99 0 0);
-  --primary-soft: oklch(0.95 0.04 245);
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eff6ff;
 
   --secondary: oklch(0.96 0.015 250);
   --secondary-foreground: oklch(0.3 0.05 260);
@@ -220,7 +220,7 @@
   background: var(--gradient-hero);
 }
 @utility bg-gradient-primary {
-  background: var(--gradient-primary);
+  background: #2563eb;
 }
 @utility bg-gradient-card {
   background: var(--gradient-card);

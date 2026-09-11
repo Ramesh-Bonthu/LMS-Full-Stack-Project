@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Book, 
-  FileText, 
-  Video, 
-  Link as LinkIcon, 
-  Download, 
-  Plus, 
-  Search, 
+import {
+  Book,
+  FileText,
+  Video,
+  Link as LinkIcon,
+  Download,
+  Plus,
+  Search,
   Trash2,
   Loader,
   Filter,
@@ -385,8 +385,8 @@ export function LibraryPage() {
           statusFilter === "ALL"
             ? true
             : statusFilter === "PENDING"
-            ? r.status === "PENDING_APPROVAL" || r.isApproved === false
-            : r.status === "APPROVED" || r.isApproved !== false;
+              ? r.status === "PENDING_APPROVAL" || r.isApproved === false
+              : r.status === "APPROVED" || r.isApproved !== false;
 
         return matchesSearch && matchesType && matchesYear && matchesBranch && matchesReg && matchesStatus;
       })
@@ -412,15 +412,15 @@ export function LibraryPage() {
     const t = (type || "").toUpperCase();
     switch (t) {
       case "VIDEO":
-        return <Video className="h-5 w-5" />;
+        return <Video className="h-4 w-4 text-slate-900 dark:text-slate-100" />;
       case "LINK":
-        return <LinkIcon className="h-5 w-5" />;
+        return <LinkIcon className="h-4 w-4 text-slate-900 dark:text-slate-100" />;
       case "DOC":
-        return <FileText className="h-5 w-5" />;
+        return <FileText className="h-4 w-4 text-slate-900 dark:text-slate-100" />;
       case "PDF":
-        return <Book className="h-5 w-5" />;
+        return <Book className="h-4 w-4 text-slate-900 dark:text-slate-100" />;
       default:
-        return <Book className="h-5 w-5" />;
+        return <Book className="h-4 w-4 text-slate-900 dark:text-slate-100" />;
     }
   };
 
@@ -438,6 +438,30 @@ export function LibraryPage() {
       default:
         return "PDF Document";
     }
+  };
+
+  const getTypeBadgeStyle = (type: string) => {
+    const t = (type || "").toUpperCase();
+    switch (t) {
+      case "VIDEO":
+        return "bg-rose-50 text-rose-600 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/60";
+      case "LINK":
+        return "bg-blue-50 text-[#2563eb] border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/60";
+      case "DOC":
+        return "bg-purple-50 text-purple-600 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800/60";
+      case "PDF":
+      default:
+        return "bg-indigo-50 text-indigo-600 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/60";
+    }
+  };
+
+  const toTitleCase = (str: string) => {
+    if (!str) return "";
+    return str
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const isUserAdmin = (user?.role || "").toUpperCase() === "ADMIN";
@@ -525,7 +549,7 @@ export function LibraryPage() {
           </div>
 
           {/* Branch Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[150px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[140px]">
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
@@ -552,14 +576,11 @@ export function LibraryPage() {
               <option value="IT" className="bg-card text-foreground">
                 IT
               </option>
-              <option value="AI&DS" className="bg-card text-foreground">
-                AI&DS
-              </option>
             </select>
           </div>
 
           {/* Regulation Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[160px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[150px]">
             <select
               value={regulationFilter}
               onChange={(e) => setRegulationFilter(e.target.value)}
@@ -568,14 +589,11 @@ export function LibraryPage() {
               <option value="ALL" className="bg-card text-foreground">
                 All Regulations
               </option>
-              <option value="VR23" className="bg-card text-foreground">
-                VR23
-              </option>
-              <option value="VR21" className="bg-card text-foreground">
-                VR21
-              </option>
               <option value="AR23" className="bg-card text-foreground">
                 AR23
+              </option>
+              <option value="R22" className="bg-card text-foreground">
+                R22
               </option>
               <option value="AR21" className="bg-card text-foreground">
                 AR21
@@ -593,22 +611,20 @@ export function LibraryPage() {
           <div className="flex items-center rounded-2xl border border-border bg-card p-1 shadow-sm shrink-0">
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-xl transition ${
-                viewMode === "grid" 
-                  ? "bg-primary text-white shadow-sm" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`p-2 rounded-xl transition ${viewMode === "grid"
+                ? "bg-primary text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
               title="Grid View"
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-xl transition ${
-                viewMode === "list" 
-                  ? "bg-primary text-white shadow-sm" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`p-2 rounded-xl transition ${viewMode === "list"
+                ? "bg-primary text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
               title="List View"
             >
               <List className="h-4 w-4" />
@@ -624,31 +640,21 @@ export function LibraryPage() {
       ) : sortedFiltered.length > 0 ? (
         <>
           {viewMode === "grid" ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {paginatedResources.map((r) => {
                 const isPending = r.status === "PENDING_APPROVAL" || r.isApproved === false;
                 return (
-                  <Card key={r.id} className={`group relative flex flex-col justify-between ${isPending ? 'border-amber-500/50 bg-amber-500/5 dark:bg-amber-500/10' : ''}`}>
+                  <Card key={r.id} className={`group relative flex flex-col justify-between border border-border/80 bg-card p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-[#2563eb]/40 ${isPending ? 'border-amber-500/50 bg-amber-500/5 dark:bg-amber-500/10' : ''}`}>
                     <div>
                       <div className="flex items-center justify-between gap-2">
-                        <div
-                          className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-bold shrink-0 ${
-                            (r.type || "").toUpperCase() === "VIDEO"
-                              ? "bg-red-500/10 text-red-500 border border-red-500/20"
-                              : (r.type || "").toUpperCase() === "LINK"
-                              ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
-                              : (r.type || "").toUpperCase() === "DOC"
-                              ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
-                              : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                          }`}
-                        >
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3.5 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
                           {getIcon(r.type)}
                           <span>{getTypeLabel(r.type)}</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20 truncate">
-                            <User className="h-3 w-3 text-primary shrink-0" />
+                          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100 bg-sky-50/90 dark:bg-sky-950/40 px-3.5 py-1 rounded-full border border-sky-200/80 dark:border-sky-800/60 shadow-2xs truncate leading-none">
+                            <User className="h-3.5 w-3.5 text-[#2563eb] dark:text-blue-400 shrink-0" />
                             <span className="truncate">
                               {r.faculty?.role === "ADMIN" || getFacultyName(r).toLowerCase().includes("admin")
                                 ? "By: "
@@ -673,15 +679,15 @@ export function LibraryPage() {
                         {/* Left Column: Category Badges, Title, Description */}
                         <div className="flex-1 min-w-0">
                           {/* Category, Branch & Regulation Badges */}
-                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-2">
-                            <span className="text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-md border border-border/50">
-                              <HighlightText text={r.courseName || r.category || "General"} search={search} />
+                          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                            <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                              <HighlightText text={toTitleCase(r.courseName || r.category || "General")} search={search} />
                             </span>
-                            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                              Branch: {r.branch || "ALL"}
+                            <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                              Branch: {toTitleCase(r.branch || "All")}
                             </span>
-                            <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                              Reg: {r.regulation || "ALL"}
+                            <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                              Reg: {toTitleCase(r.regulation || "All")}
                             </span>
                           </div>
 
@@ -693,16 +699,16 @@ export function LibraryPage() {
                             </div>
                           )}
 
-                          <h4 className="font-bold text-base line-clamp-1 text-foreground mt-2">
+                          <h4 className="font-bold text-base line-clamp-2 leading-snug text-foreground mt-1.5 group-hover:text-[#2563eb] transition-colors break-words">
                             <HighlightText text={r.title} search={search} />
                           </h4>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1 min-h-[36px]">
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                             <HighlightText text={r.description || "No description provided."} search={search} />
                           </p>
                         </div>
 
                         {/* Right Column: Book Cover / Thumbnail Image */}
-                        <div className="w-24 h-32 shrink-0 rounded-xl overflow-hidden border border-border/80 shadow-sm bg-secondary/40 relative flex flex-col items-center justify-center group-hover:shadow-md transition">
+                        <div className="w-20 h-28 shrink-0 rounded-2xl overflow-hidden border border-border/80 shadow-xs bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 relative flex flex-col items-center justify-center group-hover:shadow-md group-hover:border-[#2563eb]/30 transition-all">
                           {r.coverUrl ? (
                             <img
                               src={formatFileUrl(r.coverUrl)}
@@ -724,18 +730,18 @@ export function LibraryPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 border-t border-border/50 pt-3">
+                    <div className="mt-5 border-t border-border/50 pt-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-[11px] text-muted-foreground font-medium">
                           Added {new Date(r.createdAt || "").toLocaleDateString()}
                         </span>
                         <a
                           href={formatFileUrl(r.url)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-all hover:shadow hover:scale-[1.02]"
                         >
-                          <Download className="h-4 w-4" /> Access
+                          <Download className="h-3.5 w-3.5" /> Access
                         </a>
                       </div>
 
@@ -792,48 +798,38 @@ export function LibraryPage() {
 
                       {/* Main Information */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider mb-1">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-bold ${
-                              (r.type || "").toUpperCase() === "VIDEO"
-                                ? "bg-red-500/10 text-red-500 border border-red-500/20"
-                                : (r.type || "").toUpperCase() === "LINK"
-                                ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
-                                : (r.type || "").toUpperCase() === "DOC"
-                                ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
-                                : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                            }`}
-                          >
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3.5 py-1 text-xs font-semibold leading-none shadow-2xs shrink-0">
                             {getIcon(r.type)}
                             <span>{getTypeLabel(r.type)}</span>
                           </span>
 
-                          <span className="text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-md border border-border/50">
-                            <HighlightText text={r.courseName || r.category || "General"} search={search} />
+                          <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                            <HighlightText text={toTitleCase(r.courseName || r.category || "General")} search={search} />
                           </span>
-                          <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                            Branch: {r.branch || "ALL"}
+                          <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                            Branch: {toTitleCase(r.branch || "All")}
                           </span>
-                          <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                            Reg: {r.regulation || "ALL"}
+                          <span className="inline-flex items-center justify-center rounded-full bg-sky-50/90 text-slate-900 dark:bg-sky-950/40 dark:text-slate-100 border border-sky-200/80 dark:border-sky-800/60 px-3 py-1 text-xs font-semibold leading-none shadow-2xs">
+                            Reg: {toTitleCase(r.regulation || "All")}
                           </span>
                           {isPending && (
-                            <span className="text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+                            <span className="text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 text-xs font-semibold">
                               Pending Approval
                             </span>
                           )}
                         </div>
 
-                        <h4 className="font-bold text-base text-foreground truncate">
+                        <h4 className="font-bold text-base text-foreground line-clamp-2 leading-snug break-words">
                           <HighlightText text={r.title} search={search} />
                         </h4>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
                           <HighlightText text={r.description || "No description provided."} search={search} />
                         </p>
 
-                        <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
-                          <span className="text-primary font-semibold flex items-center gap-1">
-                            <User className="h-3 w-3 text-primary shrink-0" />
+                        <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <span className="text-slate-900 dark:text-slate-100 font-semibold flex items-center gap-1">
+                            <User className="h-3.5 w-3.5 text-slate-900 dark:text-slate-100 shrink-0" />
                             {r.faculty?.role === "ADMIN" || getFacultyName(r).toLowerCase().includes("admin") ? "By: " : "Faculty: "}
                             <HighlightText text={getFacultyName(r)} search={search} />
                           </span>
@@ -913,11 +909,10 @@ export function LibraryPage() {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`h-8 w-8 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          currentPage === page
-                            ? "bg-primary text-white shadow-sm"
-                            : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary"
-                        }`}
+                        className={`h-8 w-8 rounded-xl text-xs font-bold transition cursor-pointer ${currentPage === page
+                          ? "bg-primary text-white shadow-sm"
+                          : "border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary"
+                          }`}
                       >
                         {page}
                       </button>
@@ -1015,11 +1010,10 @@ export function LibraryPage() {
                         type="button"
                         key={b}
                         onClick={() => setBranch(b)}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${
-                          branch === b
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                        }`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${branch === b
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                          }`}
                       >
                         {b}
                       </button>
@@ -1043,11 +1037,10 @@ export function LibraryPage() {
                         type="button"
                         key={reg}
                         onClick={() => setRegulation(reg)}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${
-                          regulation === reg
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                        }`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition ${regulation === reg
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                          }`}
                       >
                         {reg}
                       </button>
@@ -1125,11 +1118,10 @@ export function LibraryPage() {
                 ) : (
                   <div>
                     <label
-                      className={`flex items-center gap-3 border border-dashed ${
-                        coverError
-                          ? "border-destructive/60 bg-destructive/5"
-                          : "border-border hover:border-primary/50 bg-secondary/20 hover:bg-secondary/40"
-                      } rounded-xl p-3 cursor-pointer transition group`}
+                      className={`flex items-center gap-3 border border-dashed ${coverError
+                        ? "border-destructive/60 bg-destructive/5"
+                        : "border-border hover:border-primary/50 bg-secondary/20 hover:bg-secondary/40"
+                        } rounded-xl p-3 cursor-pointer transition group`}
                     >
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 group-hover:scale-105 transition-transform">
                         <Image className="h-4 w-4" />
@@ -1171,22 +1163,20 @@ export function LibraryPage() {
                       <button
                         type="button"
                         onClick={() => setUploadMode("file")}
-                        className={`px-2.5 py-1 rounded-md font-semibold transition ${
-                          uploadMode === "file"
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:bg-secondary"
-                        }`}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition ${uploadMode === "file"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-secondary"
+                          }`}
                       >
                         {type === "PDF" ? "Upload PDF" : "Upload MS Word"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setUploadMode("url")}
-                        className={`px-2.5 py-1 rounded-md font-semibold transition ${
-                          uploadMode === "url"
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:bg-secondary"
-                        }`}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition ${uploadMode === "url"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-secondary"
+                          }`}
                       >
                         Provide Link
                       </button>
@@ -1248,31 +1238,31 @@ export function LibraryPage() {
                   )}
                 </div>
               ) :
- type === "VIDEO" ? (
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    Video URL (YouTube or Direct Video Link) *
-                  </label>
-                  <input
-                    placeholder="e.g. https://www.youtube.com/watch?v=..."
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    External Link / Web URL *
-                  </label>
-                  <input
-                    placeholder="e.g. https://example.com/notes"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
-              )}
+                type === "VIDEO" ? (
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                      Video URL (YouTube or Direct Video Link) *
+                    </label>
+                    <input
+                      placeholder="e.g. https://www.youtube.com/watch?v=..."
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                      External Link / Web URL *
+                    </label>
+                    <input
+                      placeholder="e.g. https://example.com/notes"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                )}
             </div>
 
             <div className="mt-6 flex gap-3">
