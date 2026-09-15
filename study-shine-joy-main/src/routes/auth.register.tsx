@@ -8,8 +8,8 @@ import type { Role } from "@/lib/lms-data";
 export const Route = createFileRoute("/auth/register")({
   head: () => ({
     meta: [
-      { title: "Register - Vignan's LMS" },
-      { name: "description", content: "Register for Vignan's LMS" },
+      { title: "Register - ANITS LMS" },
+      { name: "description", content: "Register for ANITS LMS" },
     ],
   }),
   component: RegisterPage,
@@ -160,7 +160,7 @@ function RegisterPage() {
                 <div className="mb-8">
                   <h2 className="text-3xl font-bold">Create account</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Register to get started with Vignan's LMS
+                    Register to get started with ANITS LMS
                   </p>
                 </div>
 

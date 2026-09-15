@@ -547,8 +547,8 @@ export function FacultyCourses() {
         </Card>
 
         {/* Sub-Modules Tabs Bar */}
-        <div className="border-b border-border">
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 pb-1 w-full">
+        <div className="border-b border-border overflow-x-auto no-scrollbar">
+          <div className="flex min-w-max sm:w-full items-center justify-between gap-1 pb-1">
             {[
               { id: "modules", label: "Content / Modules", icon: Layers },
               { id: "quizzes", label: "Quizzes", icon: FileQuestion },
@@ -564,7 +564,7 @@ export function FacultyCourses() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id as CourseTab)}
-                  className={`flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-3 text-[13px] font-semibold rounded-t-xl transition text-center border-b-2 w-full ${active
+                  className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-3 text-xs font-bold rounded-xl transition text-center border-b-2 ${active
                     ? "border-primary text-primary bg-primary/10 shadow-sm"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                     }`}

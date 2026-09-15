@@ -34,7 +34,7 @@ export function Landing() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-display text-xl font-bold">Vignan's LMS</span>
+          <span className="font-display text-xl font-bold">ANITS LMS</span>
         </div>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#features" className="hover:text-foreground transition">
@@ -182,7 +182,7 @@ export function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Vignan's LMS · Crafted for calm learning
+        © {new Date().getFullYear()} ANITS LMS · Crafted for calm learning
       </footer>
     </div>
   );

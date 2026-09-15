@@ -498,7 +498,7 @@ export function LibraryPage() {
         {/* Filters: Type, Branch, Regulation, Status */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Type Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[150px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm w-full sm:w-auto flex-1 sm:flex-none min-w-[140px]">
             <Filter className="h-4 w-4 text-primary shrink-0" />
             <select
               value={typeFilter}
@@ -524,7 +524,7 @@ export function LibraryPage() {
           </div>
 
           {/* Target Year Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[140px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm w-full sm:w-auto flex-1 sm:flex-none min-w-[130px]">
             <select
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
@@ -549,7 +549,7 @@ export function LibraryPage() {
           </div>
 
           {/* Branch Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[140px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm w-full sm:w-auto flex-1 sm:flex-none min-w-[130px]">
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
@@ -580,7 +580,7 @@ export function LibraryPage() {
           </div>
 
           {/* Regulation Filter Dropdown */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm min-w-[150px]">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-sm w-full sm:w-auto flex-1 sm:flex-none min-w-[140px]">
             <select
               value={regulationFilter}
               onChange={(e) => setRegulationFilter(e.target.value)}
@@ -957,7 +957,7 @@ export function LibraryPage() {
 
             <div className="space-y-4">
               {/* Type Selection & Category */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Resource Type
@@ -993,7 +993,7 @@ export function LibraryPage() {
               </div>
 
               {/* Target Branch & Regulation Inputs */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Target Branch (ALL or Specific)

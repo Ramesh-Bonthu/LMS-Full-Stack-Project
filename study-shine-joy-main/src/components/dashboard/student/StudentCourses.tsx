@@ -257,8 +257,8 @@ export function StudentCourses() {
       />
 
       {/* 2 MAIN TABS BAR (Enrolled Courses vs Explore New Courses Side-by-Side) */}
-      <div className="border-b border-border bg-card rounded-2xl shadow-sm p-1.5 mb-6">
-        <nav className="flex w-full items-center justify-between">
+      <div className="border-b border-border bg-card rounded-2xl shadow-sm p-1.5 mb-6 overflow-x-auto no-scrollbar">
+        <nav className="flex min-w-max sm:w-full items-center justify-between gap-1">
           <button
             onClick={() => setMainTab("enrolled")}
             className={`flex flex-1 items-center justify-center gap-2 py-3 px-4 text-xs font-bold transition-all rounded-xl relative ${
@@ -630,8 +630,8 @@ function StudentCourseWorkspace({ course: initialCourse, onBack }: { course: Cou
       </Card>
 
       {/* 4 WORKSPACE TAB NAVIGATION SPREAD ACROSS THE SCREEN */}
-      <div className="border-b border-border bg-card rounded-2xl shadow-sm p-1.5">
-        <nav className="flex w-full items-center justify-between">
+      <div className="border-b border-border bg-card rounded-2xl shadow-sm p-1.5 overflow-x-auto no-scrollbar">
+        <nav className="flex min-w-max sm:w-full items-center justify-between gap-1">
           {[
             { id: "modules" as CourseTab, label: "Content / Modules", icon: Layers },
             { id: "quizzes" as CourseTab, label: "Quizzes", icon: FileQuestion },
