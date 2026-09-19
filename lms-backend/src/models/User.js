@@ -7,6 +7,7 @@ module.exports = (sequelize) => {
     email: { type: DataTypes.STRING, unique: true, allowNull: false },
     password: { type: DataTypes.STRING, allowNull: false },
     role: { type: DataTypes.STRING, allowNull: false },
+    phone: { type: DataTypes.STRING },
     active: { type: DataTypes.BOOLEAN, defaultValue: true },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     verificationOtp: { type: DataTypes.STRING },

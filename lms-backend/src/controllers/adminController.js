@@ -12,6 +12,7 @@ exports.getAllUsers = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      phone: user.phone || null,
       year: user.year || defaultYears[idx % defaultYears.length],
       branch: user.branch || defaultBranches[idx % defaultBranches.length],
       sem: user.sem || defaultSems[idx % defaultSems.length],
@@ -24,6 +25,64 @@ exports.getAllUsers = async (req, res) => {
       status: user.active ? "Active" : "Pending",
     }))
   );
+};
+
+exports.createUser = async (req, res) => {
+  try {
+    const { name, email, password, role, branch, phone, year, sem, section, rollNo, facultyId, hodId } = req.body;
+    
+    if (!name || !email || !role) {
+      return res.status(400).json({ success: false, error: "Name, Email, and Role are required." });
+    }
+
+    const emailTrimmed = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ where: { email: emailTrimmed } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: `A user with email ${emailTrimmed} already exists.` });
+    }
+
+    const bcrypt = require("bcryptjs");
+    const defaultPassword = password || "password123";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    const userRole = role.toUpperCase();
+    const targetBranch = (branch || "CSE").toUpperCase();
+
+    const newUser = await User.create({
+      name: name.trim(),
+      email: emailTrimmed,
+      password: hashedPassword,
+      role: userRole,
+      branch: targetBranch,
+      phone: phone ? phone.trim() : null,
+      year: year || (userRole === "STUDENT" ? "3rd Year" : "ALL"),
+      sem: sem || (userRole === "STUDENT" ? "Sem 1" : "ALL"),
+      section: section || (userRole === "STUDENT" ? "A" : "ALL"),
+      rollNo: rollNo ? rollNo.trim() : userRole === "STUDENT" ? `22${targetBranch}${Math.floor(100 + Math.random() * 900)}` : null,
+      facultyId: facultyId ? facultyId.trim() : userRole === "FACULTY" ? `FAC${targetBranch}${Math.floor(10 + Math.random() * 90)}` : null,
+      hodId: hodId ? hodId.trim() : userRole === "ADMIN" ? `HOD${targetBranch}01` : null,
+      active: true,
+      isVerified: true,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `${userRole === "ADMIN" ? "HOD / Admin" : userRole === "FACULTY" ? "Faculty" : "Student"} account created successfully!`,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        branch: newUser.branch,
+        phone: newUser.phone,
+        active: newUser.active,
+        createdAt: newUser.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to create user account." });
+  }
 };
 
 exports.approveUser = async (req, res) => {

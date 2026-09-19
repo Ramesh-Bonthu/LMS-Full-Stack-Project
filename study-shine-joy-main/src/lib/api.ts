@@ -199,6 +199,14 @@ export interface AdminUser {
   name: string;
   email: string;
   role: string;
+  phone?: string;
+  branch?: string;
+  year?: string;
+  sem?: string;
+  section?: string;
+  rollNo?: string;
+  facultyId?: string;
+  hodId?: string;
   active: boolean;
   createdAt?: string;
   status?: string;
@@ -642,6 +650,26 @@ class ApiClient {
   // ADMIN ENDPOINTS
   async getUsers() {
     return this.request("/admin/users", { method: "GET" });
+  }
+
+  async createUser(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    branch?: string;
+    role: string;
+    password?: string;
+    year?: string;
+    sem?: string;
+    section?: string;
+    rollNo?: string;
+    facultyId?: string;
+    hodId?: string;
+  }) {
+    return this.request<{ success: boolean; message?: string; user?: AdminUser }>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
   async approveUser(userId: string) {

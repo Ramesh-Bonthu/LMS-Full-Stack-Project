@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ShieldCheck, GraduationCap, Users, UserCheck, UserX, Search, CheckCircle2, XCircle } from "lucide-react";
+import { ShieldCheck, GraduationCap, Users, UserCheck, Search, Plus, X, UserPlus, Loader } from "lucide-react";
 import { type AdminUser, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PageHeader, Card, Btn, StatusPill } from "../../shared/UIPrimitives";
+import { toast } from "sonner";
 
 type RoleFilter = "ALL" | "ADMIN" | "FACULTY" | "STUDENT";
 
@@ -18,6 +19,17 @@ export function AdminUsers() {
   const [yearFilter, setYearFilter] = useState("Overall");
   const [branchFilter, setBranchFilter] = useState("Overall");
   const [semFilter, setSemFilter] = useState("Overall");
+
+  // Create New User Modal Dialog States
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPhone, setNewUserPhone] = useState("");
+  const [newUserBranch, setNewUserBranch] = useState(hodBranch || "CSE");
+  const [newUserRole, setNewUserRole] = useState(isSuperAdmin ? "ADMIN" : "FACULTY");
+  const [newUserPassword, setNewUserPassword] = useState("password123");
+  const [newUserStaffId, setNewUserStaffId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -36,6 +48,58 @@ export function AdminUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const resetCreateForm = () => {
+    setIsCreateModalOpen(false);
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserPhone("");
+    setNewUserBranch(hodBranch || "CSE");
+    setNewUserRole(isSuperAdmin ? "ADMIN" : "FACULTY");
+    setNewUserPassword("password123");
+    setNewUserStaffId("");
+    setIsSubmitting(false);
+  };
+
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim()) return toast.error("Full Name is required");
+    if (!newUserEmail.trim()) return toast.error("Email Address is required");
+
+    try {
+      setIsSubmitting(true);
+      const payload: any = {
+        name: newUserName,
+        email: newUserEmail,
+        phone: newUserPhone,
+        branch: (!isSuperAdmin && hodBranch) ? hodBranch : newUserBranch,
+        role: newUserRole,
+        password: newUserPassword || "password123",
+      };
+
+      if (newUserRole === "ADMIN") {
+        payload.hodId = newUserStaffId;
+      } else if (newUserRole === "FACULTY") {
+        payload.facultyId = newUserStaffId;
+      } else if (newUserRole === "STUDENT") {
+        payload.rollNo = newUserStaffId;
+      }
+
+      const res = await api.createUser(payload);
+
+      if (res.success) {
+        toast.success(res.message || "User account created successfully!");
+        resetCreateForm();
+        await fetchUsers();
+      } else {
+        toast.error(res.error || "Failed to create user account");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Error creating user account");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleApprove = async (userId: number) => {
     const res = await api.approveUser(userId.toString());
@@ -91,6 +155,7 @@ export function AdminUsers() {
       (u: any) =>
         (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.phone || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.rollNo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.facultyId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.hodId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,22 +197,32 @@ export function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header & Total Members Counter Banner */}
+      {/* Page Header & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-display text-foreground">User Management</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Approve, manage and monitor user accounts across the LMS platform.
+            Approve, manage and create new HOD, Faculty, or Student accounts.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-2.5 flex items-center gap-3 shadow-sm">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-glow">
-            <UserCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total Members</div>
-            <div className="text-xl font-bold text-primary font-display">{totalCount} Users Registered</div>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* New Create Button */}
+          <Btn
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 text-xs font-bold shadow-glow py-2.5 px-4 bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+          >
+            <Plus className="h-4 w-4" /> New Create
+          </Btn>
+
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-2.5 flex items-center gap-3 shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-glow">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total Members</div>
+              <div className="text-xl font-bold text-primary font-display">{totalCount} Users Registered</div>
+            </div>
           </div>
         </div>
       </div>
@@ -222,7 +297,7 @@ export function AdminUsers() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Inline Filter Controls: Year, Branch, Sem */}
-            <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-2xl border border-border">
+            <div className="flex flex-wrap items-center gap-1.5 bg-secondary/50 p-1 rounded-2xl border border-border w-full sm:w-auto">
               <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-xl border border-border text-xs font-medium">
                 <span className="text-muted-foreground font-semibold">Year:</span>
                 <select
@@ -297,10 +372,10 @@ export function AdminUsers() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
-                placeholder="Search by name, email, roll no, or staff ID..."
+                placeholder="Search by name, email, phone, roll no, or staff ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-full border border-border bg-card py-1.5 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-ring/40 w-56"
+                className="rounded-full border border-border bg-card py-1.5 pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-ring/40 w-full sm:w-56"
               />
             </div>
           </div>
@@ -349,7 +424,9 @@ export function AdminUsers() {
                           </div>
                           <div>
                             <div className="font-bold text-foreground">{entry.name}</div>
-                            <div className="text-[11px] text-muted-foreground">{entry.email}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {entry.email} {entry.phone ? `• ${entry.phone}` : ""}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -396,6 +473,160 @@ export function AdminUsers() {
           </div>
         )}
       </Card>
+
+      {/* CREATE NEW USER DIALOG MODAL */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold font-display text-foreground">
+                    {isSuperAdmin ? "New Create User Account" : `New Create Faculty (${hodBranch} Dept)`}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {isSuperAdmin
+                      ? "Create HOD, Faculty, or Student accounts with assigned permissions."
+                      : `Add new faculty members to the ${hodBranch} Department.`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={resetCreateForm}
+                className="text-muted-foreground hover:text-foreground transition rounded-lg p-1 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-4">
+              {/* Full Name */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Full Name *
+                </label>
+                <input
+                  required
+                  placeholder="e.g. Dr. K. V. Ramana"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                />
+              </div>
+
+              {/* Email & Phone Number Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Email Address *
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    placeholder="e.g. user@anits.edu.in"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 9876543210"
+                    value={newUserPhone}
+                    onChange={(e) => setNewUserPhone(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* User Role & Branch Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    User Role / Permission *
+                  </label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  >
+                    {isSuperAdmin && <option value="ADMIN">🛡️ HOD / Department Admin</option>}
+                    <option value="FACULTY">🎓 Faculty Member</option>
+                    <option value="STUDENT">📚 Student</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Branch / Department *
+                  </label>
+                  <select
+                    value={(!isSuperAdmin && hodBranch) ? hodBranch : newUserBranch}
+                    onChange={(e) => setNewUserBranch(e.target.value)}
+                    disabled={!isSuperAdmin && !!hodBranch}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer uppercase disabled:opacity-80"
+                  >
+                    <option value="CSE">CSE</option>
+                    <option value="ECE">ECE</option>
+                    <option value="EEE">EEE</option>
+                    <option value="MECH">MECH</option>
+                    <option value="CIVIL">CIVIL</option>
+                    <option value="IT">IT</option>
+                    <option value="AI & ML">AI & ML</option>
+                    <option value="AI & DS">AI & DS</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Default Password & Custom ID Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    Default Password
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="password123"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                    {newUserRole === "ADMIN" ? "HOD Staff ID (Optional)" : newUserRole === "FACULTY" ? "Faculty ID (Optional)" : "Roll No (Optional)"}
+                  </label>
+                  <input
+                    placeholder={newUserRole === "ADMIN" ? "e.g. HODCSE01" : newUserRole === "FACULTY" ? "e.g. FACCSE01" : "e.g. 22CSE01"}
+                    value={newUserStaffId}
+                    onChange={(e) => setNewUserStaffId(e.target.value.toUpperCase())}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex gap-3 pt-2">
+                <Btn type="button" variant="ghost" className="flex-1 cursor-pointer" onClick={resetCreateForm} disabled={isSubmitting}>
+                  Cancel
+                </Btn>
+                <Btn type="submit" className="flex-1 cursor-pointer" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader className="h-4 w-4 animate-spin" /> : "Create Account"}
+                </Btn>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
