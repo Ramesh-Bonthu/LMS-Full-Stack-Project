@@ -68,27 +68,32 @@ export function AdminUsers() {
 
     try {
       setIsSubmitting(true);
+
+      // Strict Hierarchy Scoping:
+      // Super Admin -> Role: ADMIN (HOD)
+      // HOD -> Role: FACULTY, Branch: hodBranch
+      const targetRole = isSuperAdmin ? "ADMIN" : "FACULTY";
+      const targetBranch = isSuperAdmin ? newUserBranch : hodBranch;
+
       const payload: any = {
         name: newUserName,
         email: newUserEmail,
         phone: newUserPhone,
-        branch: (!isSuperAdmin && hodBranch) ? hodBranch : newUserBranch,
-        role: newUserRole,
+        branch: targetBranch,
+        role: targetRole,
         password: newUserPassword || "password123",
       };
 
-      if (newUserRole === "ADMIN") {
+      if (targetRole === "ADMIN") {
         payload.hodId = newUserStaffId;
-      } else if (newUserRole === "FACULTY") {
+      } else if (targetRole === "FACULTY") {
         payload.facultyId = newUserStaffId;
-      } else if (newUserRole === "STUDENT") {
-        payload.rollNo = newUserStaffId;
       }
 
       const res = await api.createUser(payload);
 
       if (res.success) {
-        toast.success(res.message || "User account created successfully!");
+        toast.success(res.message || `${targetRole === "ADMIN" ? "Department HOD" : "Faculty"} account created successfully!`);
         resetCreateForm();
         await fetchUsers();
       } else {
@@ -202,7 +207,9 @@ export function AdminUsers() {
         <div>
           <h1 className="text-2xl font-bold font-display text-foreground">User Management</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Approve, manage and create new HOD, Faculty, or Student accounts.
+            {isSuperAdmin
+              ? "Oversee platform members and create new Department HOD accounts."
+              : `Manage ${hodBranch} Department staff and create new Faculty member accounts.`}
           </p>
         </div>
 
@@ -210,7 +217,7 @@ export function AdminUsers() {
           {/* New Create Button */}
           <Btn
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 text-xs font-bold shadow-glow py-2.5 px-4 bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+            className="flex items-center gap-2 text-xs font-bold shadow-glow py-2.5 px-4 bg-[#2563eb] text-white hover:bg-[#1d4ed8] cursor-pointer"
           >
             <Plus className="h-4 w-4" /> New Create
           </Btn>
@@ -438,7 +445,7 @@ export function AdminUsers() {
                       <td className="py-3.5">
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border uppercase ${roleBadgeClass}`}>
-                            {roleStr}
+                            {roleStr === "ADMIN" ? "HOD / ADMIN" : roleStr}
                           </span>
                           <span className="text-xs font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                             {entry.branch || "General"}
@@ -474,7 +481,7 @@ export function AdminUsers() {
         )}
       </Card>
 
-      {/* CREATE NEW USER DIALOG MODAL */}
+      {/* CREATE NEW USER DIALOG MODAL (STRICT HIERARCHY) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
@@ -485,12 +492,12 @@ export function AdminUsers() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold font-display text-foreground">
-                    {isSuperAdmin ? "New Create User Account" : `New Create Faculty (${hodBranch} Dept)`}
+                    {isSuperAdmin ? "Create New Department HOD" : `Create New Faculty Member (${hodBranch})`}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {isSuperAdmin
-                      ? "Create HOD, Faculty, or Student accounts with assigned permissions."
-                      : `Add new faculty members to the ${hodBranch} Department.`}
+                      ? "Main Admin hierarchy permission: Create new Department HODs."
+                      : `HOD hierarchy permission: Create new Faculty members for ${hodBranch} Department.`}
                   </p>
                 </div>
               </div>
@@ -510,7 +517,7 @@ export function AdminUsers() {
                 </label>
                 <input
                   required
-                  placeholder="e.g. Dr. K. V. Ramana"
+                  placeholder={isSuperAdmin ? "e.g. Dr. K. V. Ramana (HOD)" : "e.g. Prof. S. Sharma"}
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
                   className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
@@ -526,7 +533,7 @@ export function AdminUsers() {
                   <input
                     required
                     type="email"
-                    placeholder="e.g. user@anits.edu.in"
+                    placeholder={isSuperAdmin ? "e.g. hodcse@anits.edu.in" : "e.g. faculty.cse@anits.edu.in"}
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
@@ -547,46 +554,51 @@ export function AdminUsers() {
                 </div>
               </div>
 
-              {/* User Role & Branch Grid */}
+              {/* User Role Permission & Branch / Department Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    User Role / Permission *
+                    Assigned Role / Permission
                   </label>
-                  <select
-                    value={newUserRole}
-                    onChange={(e) => setNewUserRole(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-                  >
-                    {isSuperAdmin && <option value="ADMIN">🛡️ HOD / Department Admin</option>}
-                    <option value="FACULTY">🎓 Faculty Member</option>
-                    <option value="STUDENT">📚 Student</option>
-                  </select>
+                  <div className="w-full rounded-xl border border-purple-500/30 bg-purple-500/10 px-3.5 py-2.5 text-sm font-bold text-purple-600 dark:text-purple-300 flex items-center justify-between">
+                    <span>{isSuperAdmin ? "🛡️ Department HOD (ADMIN)" : "🎓 Faculty Member (FACULTY)"}</span>
+                    <span className="text-[10px] uppercase tracking-wide bg-purple-500/20 px-2 py-0.5 rounded font-extrabold">
+                      LOCKED BY HIERARCHY
+                    </span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Branch / Department *
                   </label>
-                  <select
-                    value={(!isSuperAdmin && hodBranch) ? hodBranch : newUserBranch}
-                    onChange={(e) => setNewUserBranch(e.target.value)}
-                    disabled={!isSuperAdmin && !!hodBranch}
-                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer uppercase disabled:opacity-80"
-                  >
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="CIVIL">CIVIL</option>
-                    <option value="IT">IT</option>
-                    <option value="AI & ML">AI & ML</option>
-                    <option value="AI & DS">AI & DS</option>
-                  </select>
+                  {isSuperAdmin ? (
+                    <select
+                      value={newUserBranch}
+                      onChange={(e) => setNewUserBranch(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer uppercase"
+                    >
+                      <option value="CSE">CSE</option>
+                      <option value="ECE">ECE</option>
+                      <option value="EEE">EEE</option>
+                      <option value="MECH">MECH</option>
+                      <option value="CIVIL">CIVIL</option>
+                      <option value="IT">IT</option>
+                      <option value="AI & ML">AI & ML</option>
+                      <option value="AI & DS">AI & DS</option>
+                    </select>
+                  ) : (
+                    <div className="w-full rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-sm font-bold text-primary flex items-center justify-between">
+                      <span>{hodBranch} Department</span>
+                      <span className="text-[10px] uppercase tracking-wide bg-primary/20 px-2 py-0.5 rounded font-extrabold">
+                        HOD BRANCH
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Default Password & Custom ID Grid */}
+              {/* Default Password & Custom Staff ID Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
@@ -603,10 +615,10 @@ export function AdminUsers() {
 
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                    {newUserRole === "ADMIN" ? "HOD Staff ID (Optional)" : newUserRole === "FACULTY" ? "Faculty ID (Optional)" : "Roll No (Optional)"}
+                    {isSuperAdmin ? "HOD Staff ID (Optional)" : "Faculty Staff ID (Optional)"}
                   </label>
                   <input
-                    placeholder={newUserRole === "ADMIN" ? "e.g. HODCSE01" : newUserRole === "FACULTY" ? "e.g. FACCSE01" : "e.g. 22CSE01"}
+                    placeholder={isSuperAdmin ? "e.g. HODCSE01" : "e.g. FACCSE01"}
                     value={newUserStaffId}
                     onChange={(e) => setNewUserStaffId(e.target.value.toUpperCase())}
                     className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono uppercase"
@@ -620,7 +632,7 @@ export function AdminUsers() {
                   Cancel
                 </Btn>
                 <Btn type="submit" className="flex-1 cursor-pointer" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader className="h-4 w-4 animate-spin" /> : "Create Account"}
+                  {isSubmitting ? <Loader className="h-4 w-4 animate-spin" /> : isSuperAdmin ? "Create HOD Account" : "Create Faculty Account"}
                 </Btn>
               </div>
             </form>

@@ -31,8 +31,8 @@ exports.createUser = async (req, res) => {
   try {
     const { name, email, password, role, branch, phone, year, sem, section, rollNo, facultyId, hodId } = req.body;
     
-    if (!name || !email || !role) {
-      return res.status(400).json({ success: false, error: "Name, Email, and Role are required." });
+    if (!name || !email) {
+      return res.status(400).json({ success: false, error: "Name and Email are required." });
     }
 
     const emailTrimmed = email.trim().toLowerCase();
@@ -45,8 +45,24 @@ exports.createUser = async (req, res) => {
     const defaultPassword = password || "password123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-    const userRole = role.toUpperCase();
-    const targetBranch = (branch || "CSE").toUpperCase();
+    // Enforce Hierarchy Permissions:
+    // Main Admin (admin@example.com) -> Creates HODs (role: ADMIN)
+    // Department HOD -> Creates Faculty (role: FACULTY) for their own department branch
+    const creatorEmail = req.user?.email || "";
+    const creatorBranch = req.user?.branch || "";
+    const isSuperAdmin = creatorEmail === "admin@example.com" || !creatorBranch;
+
+    let userRole = (role || "").toUpperCase();
+    let targetBranch = (branch || "CSE").toUpperCase();
+
+    if (isSuperAdmin) {
+      userRole = "ADMIN"; // Super Admin creates HODs only
+    } else {
+      userRole = "FACULTY"; // Department HOD creates Faculty members only
+      if (creatorBranch) {
+        targetBranch = creatorBranch.toUpperCase();
+      }
+    }
 
     const newUser = await User.create({
       name: name.trim(),
@@ -55,10 +71,10 @@ exports.createUser = async (req, res) => {
       role: userRole,
       branch: targetBranch,
       phone: phone ? phone.trim() : null,
-      year: year || (userRole === "STUDENT" ? "3rd Year" : "ALL"),
-      sem: sem || (userRole === "STUDENT" ? "Sem 1" : "ALL"),
-      section: section || (userRole === "STUDENT" ? "A" : "ALL"),
-      rollNo: rollNo ? rollNo.trim() : userRole === "STUDENT" ? `22${targetBranch}${Math.floor(100 + Math.random() * 900)}` : null,
+      year: year || "ALL",
+      sem: sem || "ALL",
+      section: section || "ALL",
+      rollNo: rollNo ? rollNo.trim() : null,
       facultyId: facultyId ? facultyId.trim() : userRole === "FACULTY" ? `FAC${targetBranch}${Math.floor(10 + Math.random() * 90)}` : null,
       hodId: hodId ? hodId.trim() : userRole === "ADMIN" ? `HOD${targetBranch}01` : null,
       active: true,
@@ -67,7 +83,7 @@ exports.createUser = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: `${userRole === "ADMIN" ? "HOD / Admin" : userRole === "FACULTY" ? "Faculty" : "Student"} account created successfully!`,
+      message: `${userRole === "ADMIN" ? `Department HOD (${targetBranch})` : `Faculty (${targetBranch})`} account created successfully!`,
       user: {
         id: newUser.id,
         name: newUser.name,
