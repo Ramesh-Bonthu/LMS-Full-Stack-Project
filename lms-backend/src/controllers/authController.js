@@ -108,11 +108,27 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Record login timestamp & increment login count
-    await user.update({
-      lastLogin: new Date(),
-      loginCount: (user.loginCount || 0) + 1,
-    });
+    // Record login timestamp, login count, and history of recent sessions
+    const nowIso = new Date().toISOString();
+    let currentHistory = [];
+    if (Array.isArray(user.loginHistory)) {
+      currentHistory = user.loginHistory;
+    } else if (typeof user.loginHistory === "string") {
+      try {
+        const parsed = JSON.parse(user.loginHistory);
+        if (Array.isArray(parsed)) currentHistory = parsed;
+      } catch (e) {
+        currentHistory = [];
+      }
+    }
+
+    const updatedHistory = [nowIso, ...currentHistory].slice(0, 10);
+
+    user.set("lastLogin", new Date());
+    user.set("loginCount", (user.loginCount || 0) + 1);
+    user.set("loginHistory", updatedHistory);
+    user.changed("loginHistory", true);
+    await user.save();
 
     const token = generateToken(user);
     return res.json({ 

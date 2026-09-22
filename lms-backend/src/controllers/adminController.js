@@ -11,23 +11,43 @@ exports.getAllUsers = async (req, res) => {
   const defaultSems = ["Sem 1", "Sem 2"];
 
   return res.json(
-    users.map((user, idx) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone || null,
-      year: user.year || defaultYears[idx % defaultYears.length],
-      branch: user.branch || defaultBranches[idx % defaultBranches.length],
-      sem: user.sem || defaultSems[idx % defaultSems.length],
-      section: user.section || "A",
-      rollNo: user.rollNo || null,
-      facultyId: user.facultyId || null,
-      hodId: user.hodId || null,
-      active: user.active,
-      createdAt: user.createdAt,
-      status: user.active ? "Active" : "Pending",
-    }))
+    users.map((user, idx) => {
+      let history = [];
+      if (Array.isArray(user.loginHistory)) {
+        history = user.loginHistory;
+      } else if (typeof user.loginHistory === "string") {
+        try {
+          const parsed = JSON.parse(user.loginHistory);
+          if (Array.isArray(parsed)) history = parsed;
+        } catch (e) {
+          history = [];
+        }
+      }
+      if (history.length === 0 && user.lastLogin) {
+        history = [user.lastLogin];
+      }
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone || null,
+        year: user.year || defaultYears[idx % defaultYears.length],
+        branch: user.branch || defaultBranches[idx % defaultBranches.length],
+        sem: user.sem || defaultSems[idx % defaultSems.length],
+        section: user.section || "A",
+        rollNo: user.rollNo || null,
+        facultyId: user.facultyId || null,
+        hodId: user.hodId || null,
+        active: user.active,
+        createdAt: user.createdAt,
+        status: user.active ? "Active" : "Pending",
+        lastLogin: user.lastLogin || null,
+        loginCount: user.loginCount || (user.lastLogin ? 1 : 0),
+        loginHistory: history,
+      };
+    })
   );
 };
 
@@ -46,12 +66,22 @@ exports.sendCreateUserOtp = async (req, res) => {
       return res.status(400).json({ success: false, error: `A user with email ${emailTrimmed} already exists in ANITS LMS.` });
     }
 
-    // Determine target role (Super Admin -> HOD/ADMIN, HOD -> FACULTY)
     const creatorEmail = req.user?.email || "";
     const creatorBranch = req.user?.branch || "";
     const isSuperAdmin = creatorEmail === "admin@example.com" || !creatorBranch;
-    const targetRole = isSuperAdmin ? "ADMIN" : "FACULTY";
-    const roleTitle = targetRole === "ADMIN" ? "Department HOD" : "Faculty Member";
+
+    let targetRole = (role || "").toUpperCase();
+    if (isSuperAdmin) {
+      if (!["ADMIN", "FACULTY", "STUDENT"].includes(targetRole)) {
+        targetRole = "ADMIN";
+      }
+    } else {
+      if (!["FACULTY", "STUDENT"].includes(targetRole)) {
+        targetRole = "FACULTY";
+      }
+    }
+
+    const roleTitle = targetRole === "ADMIN" ? "Department HOD" : targetRole === "STUDENT" ? "Student Account" : "Faculty Member";
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -73,7 +103,7 @@ exports.sendCreateUserOtp = async (req, res) => {
   }
 };
 
-// STEP 2: Verify OTP and Create HOD / Faculty Account with Welcome Credential Email
+// STEP 2: Verify OTP and Create HOD / Faculty / Student Account with Welcome Credential Email
 exports.verifyAndCreateUser = async (req, res) => {
   try {
     const { name, email, password, role, branch, phone, year, sem, section, rollNo, facultyId, hodId, otp } = req.body;
@@ -114,20 +144,21 @@ exports.verifyAndCreateUser = async (req, res) => {
     const defaultPassword = password || "password123";
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-    // Enforce Hierarchy Permissions:
-    // Main Admin (admin@example.com) -> Creates HODs (role: ADMIN)
-    // Department HOD -> Creates Faculty (role: FACULTY) for their own department branch
     const creatorEmail = req.user?.email || "";
     const creatorBranch = req.user?.branch || "";
     const isSuperAdmin = creatorEmail === "admin@example.com" || !creatorBranch;
 
-    let userRole = (role || "").toUpperCase();
+    let userRole = (role || storedRecord.role || "").toUpperCase();
     let targetBranch = (branch || "CSE").toUpperCase();
 
     if (isSuperAdmin) {
-      userRole = "ADMIN"; // Super Admin creates HODs only
+      if (!["ADMIN", "FACULTY", "STUDENT"].includes(userRole)) {
+        userRole = "ADMIN";
+      }
     } else {
-      userRole = "FACULTY"; // Department HOD creates Faculty members only
+      if (!["FACULTY", "STUDENT"].includes(userRole)) {
+        userRole = "FACULTY";
+      }
       if (creatorBranch) {
         targetBranch = creatorBranch.toUpperCase();
       }
@@ -140,10 +171,10 @@ exports.verifyAndCreateUser = async (req, res) => {
       role: userRole,
       branch: targetBranch,
       phone: phone ? phone.trim() : null,
-      year: year || "ALL",
-      sem: sem || "ALL",
-      section: section || "ALL",
-      rollNo: rollNo ? rollNo.trim() : null,
+      year: year || (userRole === "STUDENT" ? "3rd Year" : "ALL"),
+      sem: sem || (userRole === "STUDENT" ? "Sem 1" : "ALL"),
+      section: section || (userRole === "STUDENT" ? "A" : "ALL"),
+      rollNo: rollNo ? rollNo.trim() : userRole === "STUDENT" ? `22${targetBranch}01` : null,
       facultyId: facultyId ? facultyId.trim() : userRole === "FACULTY" ? `FAC${targetBranch}${Math.floor(10 + Math.random() * 90)}` : null,
       hodId: hodId ? hodId.trim() : userRole === "ADMIN" ? `HOD${targetBranch}01` : null,
       active: true,
@@ -162,7 +193,7 @@ exports.verifyAndCreateUser = async (req, res) => {
       branch: targetBranch,
     });
 
-    const roleTitle = userRole === "ADMIN" ? `Department HOD (${targetBranch})` : `Faculty (${targetBranch})`;
+    const roleTitle = userRole === "ADMIN" ? `Department HOD (${targetBranch})` : userRole === "STUDENT" ? `Student (${targetBranch})` : `Faculty (${targetBranch})`;
 
     return res.status(201).json({
       success: true,
@@ -676,6 +707,21 @@ exports.getUserActivityLogs = async (req, res) => {
         ? Math.round(userQuizAttempts.reduce((acc, q) => acc + q.pctScore, 0) / userQuizAttempts.length)
         : 0;
 
+    let history = [];
+    if (Array.isArray(user.loginHistory)) {
+      history = user.loginHistory;
+    } else if (typeof user.loginHistory === "string") {
+      try {
+        const parsed = JSON.parse(user.loginHistory);
+        if (Array.isArray(parsed)) history = parsed;
+      } catch (e) {
+        history = [];
+      }
+    }
+    if (history.length === 0 && user.lastLogin) {
+      history = [user.lastLogin];
+    }
+
     return res.json({
       success: true,
       user: {
@@ -696,8 +742,9 @@ exports.getUserActivityLogs = async (req, res) => {
         isDefaultPassword: user.isDefaultPassword,
         bio: user.bio || "",
         createdAt: user.createdAt,
-        lastLogin: user.lastLogin || user.updatedAt,
-        loginCount: user.loginCount || 1,
+        lastLogin: user.lastLogin || null,
+        loginCount: user.loginCount || (user.lastLogin ? 1 : 0),
+        loginHistory: history,
       },
       stats: {
         assignmentsTaken: userSubmissions.length,

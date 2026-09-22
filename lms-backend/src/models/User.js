@@ -25,5 +25,6 @@ module.exports = (sequelize) => {
     isDefaultPassword: { type: DataTypes.BOOLEAN, defaultValue: true },
     lastLogin: { type: DataTypes.DATE },
     loginCount: { type: DataTypes.INTEGER, defaultValue: 0 },
+    loginHistory: { type: DataTypes.JSONB, defaultValue: [] },
   });
 };

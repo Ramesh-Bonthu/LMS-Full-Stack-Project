@@ -253,6 +253,7 @@ export interface UserActivityLogsResponse {
     createdAt: string;
     lastLogin?: string;
     loginCount?: number;
+    loginHistory?: string[];
   };
   stats: {
     assignmentsTaken: number;

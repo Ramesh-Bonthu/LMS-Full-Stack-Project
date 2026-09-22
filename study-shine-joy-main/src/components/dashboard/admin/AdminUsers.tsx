@@ -19,6 +19,7 @@ export function AdminUsers() {
   const [yearFilter, setYearFilter] = useState("Overall");
   const [branchFilter, setBranchFilter] = useState("Overall");
   const [semFilter, setSemFilter] = useState("Overall");
+  const [logsFilter, setLogsFilter] = useState<"Overall" | "Recently" | "Unrecently">("Overall");
 
   // User Activity & Performance Logs Modal States
   const [selectedUserLogs, setSelectedUserLogs] = useState<UserActivityLogsResponse | null>(null);
@@ -55,6 +56,10 @@ export function AdminUsers() {
   const [newUserRole, setNewUserRole] = useState(isSuperAdmin ? "ADMIN" : "FACULTY");
   const [newUserPassword, setNewUserPassword] = useState("password123");
   const [newUserStaffId, setNewUserStaffId] = useState("");
+  const [newUserYear, setNewUserYear] = useState("3rd Year");
+  const [newUserSem, setNewUserSem] = useState("Sem 1");
+  const [newUserSection, setNewUserSection] = useState("A");
+  const [newUserRollNo, setNewUserRollNo] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(45);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +105,10 @@ export function AdminUsers() {
     setNewUserRole(isSuperAdmin ? "ADMIN" : "FACULTY");
     setNewUserPassword("password123");
     setNewUserStaffId("");
+    setNewUserYear("3rd Year");
+    setNewUserSem("Sem 1");
+    setNewUserSection("A");
+    setNewUserRollNo("");
     setOtpCode("");
     setResendCooldown(45);
     setIsSubmitting(false);
@@ -117,12 +126,11 @@ export function AdminUsers() {
 
     try {
       setIsSubmitting(true);
-      const targetRole = isSuperAdmin ? "ADMIN" : "FACULTY";
 
       const res = await api.sendUserOtp({
         email: newUserEmail,
         name: newUserName,
-        role: targetRole,
+        role: newUserRole,
       });
 
       if (res.success) {
@@ -149,7 +157,6 @@ export function AdminUsers() {
     try {
       setIsSubmitting(true);
 
-      const targetRole = isSuperAdmin ? "ADMIN" : "FACULTY";
       const targetBranch = isSuperAdmin ? newUserBranch : hodBranch;
 
       const payload: any = {
@@ -157,15 +164,20 @@ export function AdminUsers() {
         email: newUserEmail,
         phone: newUserPhone,
         branch: targetBranch,
-        role: targetRole,
+        role: newUserRole,
         password: newUserPassword || "password123",
         otp: otpCode.trim(),
       };
 
-      if (targetRole === "ADMIN") {
+      if (newUserRole === "ADMIN") {
         payload.hodId = newUserStaffId;
-      } else if (targetRole === "FACULTY") {
+      } else if (newUserRole === "FACULTY") {
         payload.facultyId = newUserStaffId;
+      } else if (newUserRole === "STUDENT") {
+        payload.rollNo = newUserStaffId || newUserRollNo;
+        payload.year = newUserYear;
+        payload.sem = newUserSem;
+        payload.section = newUserSection;
       }
 
       const res = await api.verifyAndCreateUser(payload);
@@ -214,6 +226,14 @@ export function AdminUsers() {
     return ["Overall", "1st Sem", "2nd Sem", "3rd Sem", "4th Sem", "5th Sem", "6th Sem", "7th Sem", "8th Sem"];
   };
 
+  const getStudentSemestersForYear = (yr: string) => {
+    if (yr === "1st Year") return ["Sem 1", "Sem 2"];
+    if (yr === "2nd Year") return ["Sem 3", "Sem 4"];
+    if (yr === "3rd Year") return ["Sem 5", "Sem 6"];
+    if (yr === "4th Year") return ["Sem 7", "Sem 8"];
+    return ["Sem 1", "Sem 2"];
+  };
+
   const handleYearFilterChange = (newYear: string) => {
     setYearFilter(newYear);
     const validSemOptions = getSemOptionsForYear(newYear);
@@ -223,7 +243,7 @@ export function AdminUsers() {
   };
 
   // Filtered users for table
-  const filteredUsers = scopedUsers
+  let filteredUsers = scopedUsers
     .filter((u: any) => {
       if (selectedRole !== "ALL" && u.role?.toUpperCase() !== selectedRole) return false;
       if (yearFilter !== "Overall" && u.year !== yearFilter) return false;
@@ -245,6 +265,20 @@ export function AdminUsers() {
         (u.hodId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.role || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  if (logsFilter === "Recently") {
+    filteredUsers = [...filteredUsers].sort((a: any, b: any) => {
+      const timeA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+      const timeB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+      return timeB - timeA;
+    });
+  } else if (logsFilter === "Unrecently") {
+    filteredUsers = [...filteredUsers].sort((a: any, b: any) => {
+      const timeA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+      const timeB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+      return timeA - timeB;
+    });
+  }
 
   const roleCardConfigs = [
     {
@@ -439,15 +473,29 @@ export function AdminUsers() {
                   ))}
                 </select>
               </div>
+
+              <div className="flex items-center gap-1 bg-card px-2.5 py-1 rounded-xl border border-border text-xs font-medium">
+                <span className="text-muted-foreground font-semibold">Logs:</span>
+                <select
+                  value={logsFilter}
+                  onChange={(e) => setLogsFilter(e.target.value as any)}
+                  className="bg-transparent font-bold text-foreground focus:outline-none cursor-pointer"
+                >
+                  <option value="Overall">Overall</option>
+                  <option value="Recently">Recently logs</option>
+                  <option value="Unrecently">Unrecently logs</option>
+                </select>
+              </div>
             </div>
 
-            {(selectedRole !== "ALL" || yearFilter !== "Overall" || branchFilter !== "Overall" || semFilter !== "Overall") && (
+            {(selectedRole !== "ALL" || yearFilter !== "Overall" || branchFilter !== "Overall" || semFilter !== "Overall" || logsFilter !== "Overall") && (
               <button
                 onClick={() => {
                   setSelectedRole("ALL");
                   setYearFilter("Overall");
                   setBranchFilter("Overall");
                   setSemFilter("Overall");
+                  setLogsFilter("Overall");
                 }}
                 className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full hover:bg-primary/20 transition cursor-pointer"
               >
@@ -481,6 +529,7 @@ export function AdminUsers() {
                   <th className="pb-3 font-semibold">ID / Roll No</th>
                   <th className="pb-3 font-semibold">Role & Branch</th>
                   <th className="pb-3 font-semibold">Academic Info</th>
+                  <th className="pb-3 font-semibold">Last Login</th>
                   <th className="pb-3 font-semibold">Account Status</th>
                 </tr>
               </thead>
@@ -549,6 +598,17 @@ export function AdminUsers() {
                         )}
                       </td>
 
+                      <td className="py-3.5 font-mono text-[11px]">
+                        {entry.lastLogin ? (
+                          <span className="text-foreground font-semibold flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-primary shrink-0" />
+                            {new Date(entry.lastLogin).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/60 italic">Never</span>
+                        )}
+                      </td>
+
                       <td className="py-3.5">
                         <StatusPill status={entry.active ? "Active" : "Rejected"} />
                       </td>
@@ -578,16 +638,12 @@ export function AdminUsers() {
                 <div>
                   <h3 className="text-lg font-bold font-display text-foreground">
                     {createStep === 1
-                      ? isSuperAdmin
-                        ? "Create New Department HOD"
-                        : `Create New Faculty Member (${hodBranch})`
+                      ? `Create New ${newUserRole === "ADMIN" ? "Department HOD" : newUserRole === "STUDENT" ? "Student" : "Faculty Member"} ${isSuperAdmin ? "" : `(${hodBranch})`}`
                       : "Verify Email Address 🔐"}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {createStep === 1
-                      ? isSuperAdmin
-                        ? "Step 1/2: Fill HOD details to send verification OTP."
-                        : `Step 1/2: Fill Faculty details to send verification OTP.`
+                      ? "Step 1/2: Fill account details to send verification OTP."
                       : `Step 2/2: Enter the 6-digit OTP sent to ${newUserEmail}`}
                   </p>
                 </div>
@@ -610,7 +666,13 @@ export function AdminUsers() {
                   </label>
                   <input
                     required
-                    placeholder={isSuperAdmin ? "e.g. Dr. K. V. Ramana (HOD)" : "e.g. Prof. S. Sharma"}
+                    placeholder={
+                      newUserRole === "ADMIN"
+                        ? "e.g. Dr. K. V. Ramana (HOD)"
+                        : newUserRole === "STUDENT"
+                        ? "e.g. Rahul Verma"
+                        : "e.g. Prof. S. Sharma"
+                    }
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
                     className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
@@ -626,7 +688,13 @@ export function AdminUsers() {
                     <input
                       required
                       type="email"
-                      placeholder={isSuperAdmin ? "e.g. hodcse@anits.edu.in" : "e.g. faculty.cse@anits.edu.in"}
+                      placeholder={
+                        newUserRole === "ADMIN"
+                          ? "e.g. hodcse@anits.edu.in"
+                          : newUserRole === "STUDENT"
+                          ? "e.g. student@anits.edu.in"
+                          : "e.g. faculty.cse@anits.edu.in"
+                      }
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
                       className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
@@ -647,18 +715,30 @@ export function AdminUsers() {
                   </div>
                 </div>
 
-                {/* User Role Permission & Branch / Department Grid */}
+                {/* User Role Selection & Branch / Department Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                      Assigned Role / Permission
+                      Assigned Role / Permission *
                     </label>
-                    <div className="w-full rounded-xl border border-purple-500/30 bg-purple-500/10 px-3.5 py-2.5 text-sm font-bold text-purple-600 dark:text-purple-300 flex items-center justify-between">
-                      <span>{isSuperAdmin ? "🛡️ Department HOD (ADMIN)" : "🎓 Faculty Member (FACULTY)"}</span>
-                      <span className="text-[10px] uppercase tracking-wide bg-purple-500/20 px-2 py-0.5 rounded font-extrabold">
-                        LOCKED
-                      </span>
-                    </div>
+                    <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                    >
+                      {isSuperAdmin ? (
+                        <>
+                          <option value="ADMIN">🛡️ Department HOD (ADMIN)</option>
+                          <option value="FACULTY">🎓 Faculty Member (FACULTY)</option>
+                          <option value="STUDENT">👨‍🎓 Student Learner (STUDENT)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="FACULTY">🎓 Faculty Member (FACULTY)</option>
+                          <option value="STUDENT">👨‍🎓 Student Learner (STUDENT)</option>
+                        </>
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -681,17 +761,70 @@ export function AdminUsers() {
                         <option value="AI & DS">AI & DS</option>
                       </select>
                     ) : (
-                      <div className="w-full rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-sm font-bold text-primary flex items-center justify-between">
-                        <span>{hodBranch} Department</span>
-                        <span className="text-[10px] uppercase tracking-wide bg-primary/20 px-2 py-0.5 rounded font-extrabold">
-                          HOD BRANCH
-                        </span>
+                      <div className="w-full rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-sm font-bold text-primary">
+                        <span>{hodBranch || "CSE"}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Default Password & Custom Staff ID Grid */}
+                {/* If STUDENT selected, show Academic Details Grid (Year, Semester, Section) */}
+                {newUserRole === "STUDENT" && (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+                    <div className="text-xs font-bold text-primary uppercase tracking-wider">Academic Information</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Year</label>
+                        <select
+                          value={newUserYear}
+                          onChange={(e) => {
+                            const selectedYr = e.target.value;
+                            setNewUserYear(selectedYr);
+                            const validSems = getStudentSemestersForYear(selectedYr);
+                            setNewUserSem(validSems[0]);
+                          }}
+                          className="w-full rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          <option value="1st Year">1st Year</option>
+                          <option value="2nd Year">2nd Year</option>
+                          <option value="3rd Year">3rd Year</option>
+                          <option value="4th Year">4th Year</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Semester</label>
+                        <select
+                          value={newUserSem}
+                          onChange={(e) => setNewUserSem(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          {getStudentSemestersForYear(newUserYear).map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Section</label>
+                        <select
+                          value={newUserSection}
+                          onChange={(e) => setNewUserSection(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-bold cursor-pointer"
+                        >
+                          <option value="A">Sec A</option>
+                          <option value="B">Sec B</option>
+                          <option value="C">Sec C</option>
+                          <option value="D">Sec D</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Default Password & Custom ID Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
@@ -708,10 +841,10 @@ export function AdminUsers() {
 
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                      {isSuperAdmin ? "HOD Staff ID (Optional)" : "Faculty Staff ID (Optional)"}
+                      {newUserRole === "ADMIN" ? "HOD Staff ID" : newUserRole === "STUDENT" ? "Roll No / Student ID" : "Faculty Staff ID"} (Optional)
                     </label>
                     <input
-                      placeholder={isSuperAdmin ? "e.g. HODCSE01" : "e.g. FACCSE01"}
+                      placeholder={newUserRole === "ADMIN" ? "e.g. HODCSE01" : newUserRole === "STUDENT" ? "e.g. 22CSE01" : "e.g. FACCSE01"}
                       value={newUserStaffId}
                       onChange={(e) => setNewUserStaffId(e.target.value.toUpperCase())}
                       className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono uppercase"
@@ -944,7 +1077,7 @@ export function AdminUsers() {
                       <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
                         <div className="text-xs font-medium text-muted-foreground">Total Sessions</div>
                         <div className="mt-1 text-2xl font-extrabold text-purple-600 dark:text-purple-400">
-                          {selectedUserLogs.user.loginCount || 1} Logins
+                          {selectedUserLogs.user.loginCount || (selectedUserLogs.user.lastLogin ? 1 : 0)} Logins
                         </div>
                       </div>
 
@@ -956,17 +1089,59 @@ export function AdminUsers() {
                       </div>
                     </div>
 
+                    {/* RECENT LOGIN SESSIONS LIST (LAST 3 LOGS) */}
+                    <div className="rounded-2xl border border-border p-4 space-y-3">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-primary" /> Recent Login Sessions (Last 3 Logs)
+                      </h4>
+
+                      <div className="space-y-2">
+                        {selectedUserLogs.user.loginHistory && selectedUserLogs.user.loginHistory.length > 0 ? (
+                          selectedUserLogs.user.loginHistory.slice(0, 3).map((logTime: string, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-secondary/20 text-xs"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px]">
+                                  #{idx + 1}
+                                </span>
+                                <span className="font-semibold text-foreground">
+                                  {idx === 0 ? "Latest Session (Current)" : `Previous Session ${idx}`}
+                                </span>
+                              </div>
+                              <span className="font-mono text-xs font-bold text-primary">
+                                {new Date(logTime).toLocaleString(undefined, {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}
+                              </span>
+                            </div>
+                          ))
+                        ) : selectedUserLogs.user.lastLogin ? (
+                          <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-secondary/20 text-xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-[10px]">
+                                #1
+                              </span>
+                              <span className="font-semibold text-foreground">Latest Session</span>
+                            </div>
+                            <span className="font-mono text-xs font-bold text-primary">
+                              {new Date(selectedUserLogs.user.lastLogin).toLocaleString(undefined, {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="p-3 text-xs text-muted-foreground italic">No login session records recorded yet.</div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="rounded-2xl border border-border p-4 space-y-3">
                       <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Login Security & Access Record</h4>
                       <div className="divide-y divide-border/50 text-xs">
-                        <div className="py-2.5 flex items-center justify-between">
-                          <span className="text-muted-foreground">Last Recorded Web Session</span>
-                          <span className="font-bold text-foreground">
-                            {selectedUserLogs.user.lastLogin
-                              ? new Date(selectedUserLogs.user.lastLogin).toLocaleString()
-                              : "N/A"}
-                          </span>
-                        </div>
                         <div className="py-2.5 flex items-center justify-between">
                           <span className="text-muted-foreground">Authentication Method</span>
                           <span className="font-bold text-foreground">JWT Session Auth</span>
