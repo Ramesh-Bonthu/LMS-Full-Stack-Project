@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
-import { AlertCircle, Loader2, Lock, LogIn, Mail } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2, Lock, LogIn, Mail } from "lucide-react";
 import type { Role } from "@/lib/lms-data";
 
 export const Route = createFileRoute("/auth/login")({
@@ -68,9 +68,13 @@ function LoginPage() {
         className="hidden flex-1 flex-col items-center justify-center px-8 lg:flex"
       >
         <div className="max-w-md">
-          <div className="mb-8 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-primary shadow-lg">
-            <LogIn className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <Link
+            to="/"
+            title="Go to Home Page"
+            className="mb-8 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-primary shadow-lg transition-all hover:scale-105 cursor-pointer group"
+          >
+            <LogIn className="h-8 w-8 text-primary-foreground transition-transform group-hover:-translate-x-0.5" />
+          </Link>
           <h1 className="text-5xl font-bold tracking-tight">Welcome back</h1>
           <p className="mt-4 text-xl text-muted-foreground">
             Your learning platform awaits. Sign in to continue.
@@ -97,6 +101,15 @@ function LoginPage() {
         className="flex flex-1 flex-col items-center justify-center px-6 py-12 sm:px-12"
       >
         <div className="w-full max-w-md">
+          <div className="mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition group"
+            >
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Back to Home
+            </Link>
+          </div>
           <div className="mb-8">
             <h2 className="text-3xl font-bold">Sign in</h2>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -171,13 +184,6 @@ function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link to="/auth/register" className="font-medium text-primary hover:underline">
-              Create one
-            </Link>
-          </div>
 
           <div className="mt-8 rounded-xl border border-border/50 bg-secondary/30 p-4">
             <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">

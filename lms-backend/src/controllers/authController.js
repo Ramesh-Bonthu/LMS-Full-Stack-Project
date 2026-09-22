@@ -108,6 +108,12 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Record login timestamp & increment login count
+    await user.update({
+      lastLogin: new Date(),
+      loginCount: (user.loginCount || 0) + 1,
+    });
+
     const token = generateToken(user);
     return res.json({ 
       token, 

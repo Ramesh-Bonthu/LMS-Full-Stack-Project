@@ -12,6 +12,7 @@ export interface User {
   year?: string;
   sem?: string;
   section?: string;
+  isDefaultPassword?: boolean;
 }
 
 export interface AuthContextType {

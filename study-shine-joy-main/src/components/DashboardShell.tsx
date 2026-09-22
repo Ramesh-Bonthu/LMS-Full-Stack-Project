@@ -24,6 +24,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { type Role, roleMeta } from "@/lib/lms-data";
 import { api } from "@/lib/api";
+import { DefaultPasswordModal } from "./DefaultPasswordModal";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -60,6 +61,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDefaultPasswordModalOpen, setIsDefaultPasswordModalOpen] = useState(false);
 
   const isSuperAdmin = user?.email === "admin@example.com";
   let items = navByRole[role] ?? navByRole.student;
@@ -95,6 +97,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
     return () => clearInterval(interval);
   }, [location.pathname]);
+
+  // Check if current logged-in user is using a default password & prompt modal popup
+  useEffect(() => {
+    const checkDefaultPasswordStatus = async () => {
+      if (user) {
+        const profileRes = await api.getUserProfile();
+        if (profileRes.success && profileRes.data?.isDefaultPassword) {
+          setIsDefaultPasswordModalOpen(true);
+        }
+      }
+    };
+    checkDefaultPasswordStatus();
+  }, [user?.id]);
 
   // Prevent accessing dashboards not intended for their actual DB role
   useEffect(() => {
@@ -258,6 +273,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </div>
+
+      {/* AUTOMATIC DEFAULT PASSWORD CHANGE POP-UP MODAL */}
+      <DefaultPasswordModal
+        isOpen={isDefaultPasswordModalOpen}
+        onClose={() => setIsDefaultPasswordModalOpen(false)}
+        userEmail={user?.email}
+        userName={user?.name}
+      />
     </div>
   );
 }
+

@@ -1,4 +1,8 @@
 const { User, Course, Assignment, Submission, QuizAttempt, Quiz, AttendanceRecord } = require("../models");
+const { sendAdminUserOtpEmail, sendWelcomeCredentialsEmail } = require("../utils/mailer");
+
+// In-memory store for OTPs generated during HOD / Faculty account creation
+const adminOtpStore = new Map();
 
 exports.getAllUsers = async (req, res) => {
   const users = await User.findAll();
@@ -25,6 +29,159 @@ exports.getAllUsers = async (req, res) => {
       status: user.active ? "Active" : "Pending",
     }))
   );
+};
+
+// STEP 1: Generate & Send OTP to candidate email address for HOD / Faculty creation
+exports.sendCreateUserOtp = async (req, res) => {
+  try {
+    const { email, role, name } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: "Target Email address is required." });
+    }
+
+    const emailTrimmed = email.trim().toLowerCase();
+    const existingUser = await User.findOne({ where: { email: emailTrimmed } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: `A user with email ${emailTrimmed} already exists in ANITS LMS.` });
+    }
+
+    // Determine target role (Super Admin -> HOD/ADMIN, HOD -> FACULTY)
+    const creatorEmail = req.user?.email || "";
+    const creatorBranch = req.user?.branch || "";
+    const isSuperAdmin = creatorEmail === "admin@example.com" || !creatorBranch;
+    const targetRole = isSuperAdmin ? "ADMIN" : "FACULTY";
+    const roleTitle = targetRole === "ADMIN" ? "Department HOD" : "Faculty Member";
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    adminOtpStore.set(emailTrimmed, { otp, expiresAt, role: targetRole });
+
+    // Send OTP email
+    await sendAdminUserOtpEmail(emailTrimmed, otp, roleTitle);
+
+    return res.status(200).json({
+      success: true,
+      message: `A 6-digit Verification OTP has been sent to ${emailTrimmed}.`,
+      email: emailTrimmed,
+    });
+  } catch (error) {
+    console.error("Error sending user creation OTP:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to send verification OTP email." });
+  }
+};
+
+// STEP 2: Verify OTP and Create HOD / Faculty Account with Welcome Credential Email
+exports.verifyAndCreateUser = async (req, res) => {
+  try {
+    const { name, email, password, role, branch, phone, year, sem, section, rollNo, facultyId, hodId, otp } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ success: false, error: "Name and Email are required." });
+    }
+
+    if (!otp) {
+      return res.status(400).json({ success: false, error: "Verification OTP is required." });
+    }
+
+    const emailTrimmed = email.trim().toLowerCase();
+
+    // Verify OTP from adminOtpStore
+    const storedRecord = adminOtpStore.get(emailTrimmed);
+    if (!storedRecord) {
+      return res.status(400).json({ success: false, error: "No OTP request found for this email. Please click 'Send Verification OTP' again." });
+    }
+
+    if (Date.now() > storedRecord.expiresAt) {
+      adminOtpStore.delete(emailTrimmed);
+      return res.status(400).json({ success: false, error: "Verification OTP has expired. Please request a new OTP code." });
+    }
+
+    if (storedRecord.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, error: "Invalid Verification OTP code. Please enter the exact 6-digit code sent to your email." });
+    }
+
+    // Double check email existence
+    const existingUser = await User.findOne({ where: { email: emailTrimmed } });
+    if (existingUser) {
+      adminOtpStore.delete(emailTrimmed);
+      return res.status(400).json({ success: false, error: `A user with email ${emailTrimmed} already exists.` });
+    }
+
+    const bcrypt = require("bcryptjs");
+    const defaultPassword = password || "password123";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Enforce Hierarchy Permissions:
+    // Main Admin (admin@example.com) -> Creates HODs (role: ADMIN)
+    // Department HOD -> Creates Faculty (role: FACULTY) for their own department branch
+    const creatorEmail = req.user?.email || "";
+    const creatorBranch = req.user?.branch || "";
+    const isSuperAdmin = creatorEmail === "admin@example.com" || !creatorBranch;
+
+    let userRole = (role || "").toUpperCase();
+    let targetBranch = (branch || "CSE").toUpperCase();
+
+    if (isSuperAdmin) {
+      userRole = "ADMIN"; // Super Admin creates HODs only
+    } else {
+      userRole = "FACULTY"; // Department HOD creates Faculty members only
+      if (creatorBranch) {
+        targetBranch = creatorBranch.toUpperCase();
+      }
+    }
+
+    const newUser = await User.create({
+      name: name.trim(),
+      email: emailTrimmed,
+      password: hashedPassword,
+      role: userRole,
+      branch: targetBranch,
+      phone: phone ? phone.trim() : null,
+      year: year || "ALL",
+      sem: sem || "ALL",
+      section: section || "ALL",
+      rollNo: rollNo ? rollNo.trim() : null,
+      facultyId: facultyId ? facultyId.trim() : userRole === "FACULTY" ? `FAC${targetBranch}${Math.floor(10 + Math.random() * 90)}` : null,
+      hodId: hodId ? hodId.trim() : userRole === "ADMIN" ? `HOD${targetBranch}01` : null,
+      active: true,
+      isVerified: true,
+    });
+
+    // Clear stored OTP
+    adminOtpStore.delete(emailTrimmed);
+
+    // Send Welcome Email with Login Credentials
+    await sendWelcomeCredentialsEmail({
+      email: emailTrimmed,
+      password: defaultPassword,
+      name: newUser.name,
+      role: userRole,
+      branch: targetBranch,
+    });
+
+    const roleTitle = userRole === "ADMIN" ? `Department HOD (${targetBranch})` : `Faculty (${targetBranch})`;
+
+    return res.status(201).json({
+      success: true,
+      message: `Email Verified & ${roleTitle} account created successfully! Login credentials have been emailed to ${emailTrimmed}.`,
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        branch: newUser.branch,
+        phone: newUser.phone,
+        active: newUser.active,
+        createdAt: newUser.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating user after OTP verification:", error);
+    return res.status(500).json({ success: false, error: error.message || "Failed to create user account." });
+  }
 };
 
 exports.createUser = async (req, res) => {
@@ -101,6 +258,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
+
 exports.approveUser = async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -116,14 +274,26 @@ exports.rejectUser = async (req, res) => {
 };
 
 exports.getStats = async (req, res) => {
-  const [totalUsers, activeUsers, totalCourses, approvedCourses, pendingApprovals, totalAssignments, totalSubmissions] = await Promise.all([
+  const [
+    totalUsers,
+    activeUsers,
+    totalCourses,
+    approvedCourses,
+    pendingApprovals,
+    totalAssignments,
+    totalSubmissions,
+    totalQuizzes,
+    totalQuizAttempts,
+  ] = await Promise.all([
     User.count(),
     User.count({ where: { active: true } }),
     Course.count(),
     Course.count({ where: { status: "APPROVED" } }),
     Course.count({ where: { status: "PENDING" } }),
     Assignment.count(),
-    Submission.count()
+    Submission.count(),
+    Quiz.count(),
+    QuizAttempt.count(),
   ]);
 
   return res.json({
@@ -134,6 +304,8 @@ exports.getStats = async (req, res) => {
     pendingApprovals,
     totalAssignments,
     totalSubmissions,
+    totalQuizzes,
+    totalQuizAttempts,
   });
 };
 
@@ -351,5 +523,195 @@ exports.getEnrollmentTrend = async (req, res) => {
   } catch (error) {
     console.error("Error fetching analytics trend:", error);
     return res.status(500).json({ message: "Error fetching analytics trend", error: error.message });
+  }
+};
+
+exports.getUserActivityLogs = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const roleUpper = (user.role || "").toUpperCase();
+
+    // 1. Fetch Submissions (Assignments taken by student)
+    let userSubmissions = [];
+    if (roleUpper === "STUDENT") {
+      const rawSubmissions = await Submission.findAll({
+        where: { studentId: userId },
+        order: [["updatedAt", "DESC"]],
+      });
+
+      userSubmissions = await Promise.all(
+        rawSubmissions.map(async (sub) => {
+          let assignmentTitle = "Assignment #" + sub.assignmentId;
+          let courseTitle = "General Course";
+          let maxMarks = 100;
+
+          if (sub.assignmentId) {
+            const ass = await Assignment.findByPk(sub.assignmentId);
+            if (ass) {
+              assignmentTitle = ass.title;
+              maxMarks = ass.totalMarks || 100;
+              if (ass.courseId) {
+                const c = await Course.findByPk(ass.courseId);
+                if (c) courseTitle = c.title;
+              }
+            }
+          }
+
+          const rawMarks = Number(sub.marks || 0);
+          const pctScore = maxMarks > 0 ? Math.min(100, Math.round((rawMarks / maxMarks) * 100)) : 0;
+
+          return {
+            id: sub.id,
+            assignmentId: sub.assignmentId,
+            assignmentTitle,
+            courseTitle,
+            marks: rawMarks,
+            maxMarks,
+            pctScore,
+            status: sub.status || (sub.marks >= 0 ? "GRADED" : "SUBMITTED"),
+            submittedAt: sub.submittedAt || sub.createdAt || sub.updatedAt,
+            feedback: sub.feedback || null,
+          };
+        })
+      );
+    }
+
+    // 2. Fetch Quiz Attempts (Quizzes taken by student)
+    let userQuizAttempts = [];
+    if (roleUpper === "STUDENT") {
+      const rawAttempts = await QuizAttempt.findAll({
+        where: { studentId: userId },
+        order: [["createdAt", "DESC"]],
+      });
+
+      userQuizAttempts = await Promise.all(
+        rawAttempts.map(async (att) => {
+          let quizTitle = "Quiz #" + att.quizId;
+          let courseTitle = "General Course";
+          let totalQuestions = att.totalQuestions || 10;
+
+          if (att.quizId) {
+            const q = await Quiz.findByPk(att.quizId);
+            if (q) {
+              quizTitle = q.title;
+              if (q.totalQuestions) totalQuestions = q.totalQuestions;
+              if (q.courseId) {
+                const c = await Course.findByPk(q.courseId);
+                if (c) courseTitle = c.title;
+              }
+            }
+          }
+
+          const rawScore = Number(att.score || 0);
+          const maxPossible = totalQuestions > 0 ? totalQuestions : 10;
+          const pctScore = Math.min(100, Math.round((rawScore / maxPossible) * 100));
+
+          return {
+            id: att.id,
+            quizId: att.quizId,
+            quizTitle,
+            courseTitle,
+            score: rawScore,
+            totalQuestions: maxPossible,
+            pctScore,
+            completedAt: att.completedAt || att.createdAt,
+          };
+        })
+      );
+    }
+
+    // 3. Fetch Attendance Records for Student
+    let attendanceSummary = {
+      totalSessions: 0,
+      attendedSessions: 0,
+      absentSessions: 0,
+      attendancePercentage: 0,
+      records: [],
+    };
+
+    if (roleUpper === "STUDENT") {
+      const allRecords = await AttendanceRecord.findAll({
+        order: [["date", "DESC"]],
+      });
+
+      const studentRecords = allRecords.filter((rec) => {
+        if (rec.studentId && String(rec.studentId) === String(userId)) return true;
+        if (rec.branch && rec.branch === user.branch && rec.section && rec.section === user.section) return true;
+        return false;
+      });
+
+      const total = studentRecords.length;
+      const attended = studentRecords.filter(
+        (r) => r.status?.toUpperCase() === "PRESENT" || r.value > 0
+      ).length;
+      const pct = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+      attendanceSummary = {
+        totalSessions: total,
+        attendedSessions: attended,
+        absentSessions: Math.max(0, total - attended),
+        attendancePercentage: pct,
+        records: studentRecords.slice(0, 15).map((r) => ({
+          id: r.id,
+          date: r.date,
+          status: r.status || (r.value > 0 ? "PRESENT" : "ABSENT"),
+          subject: r.subject || "General",
+        })),
+      };
+    }
+
+    const avgAssignmentMarks =
+      userSubmissions.length > 0
+        ? Math.round(userSubmissions.reduce((acc, s) => acc + s.pctScore, 0) / userSubmissions.length)
+        : 0;
+
+    const avgQuizMarks =
+      userQuizAttempts.length > 0
+        ? Math.round(userQuizAttempts.reduce((acc, q) => acc + q.pctScore, 0) / userQuizAttempts.length)
+        : 0;
+
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        branch: user.branch || "CSE",
+        year: user.year || "3rd Year",
+        sem: user.sem || "Sem 1",
+        section: user.section || "A",
+        phone: user.phone || null,
+        rollNo: user.rollNo || null,
+        facultyId: user.facultyId || null,
+        hodId: user.hodId || null,
+        active: user.active,
+        isVerified: user.isVerified,
+        isDefaultPassword: user.isDefaultPassword,
+        bio: user.bio || "",
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin || user.updatedAt,
+        loginCount: user.loginCount || 1,
+      },
+      stats: {
+        assignmentsTaken: userSubmissions.length,
+        avgAssignmentMarks,
+        quizzesTaken: userQuizAttempts.length,
+        avgQuizMarks,
+        attendancePercentage: attendanceSummary.attendancePercentage,
+      },
+      submissions: userSubmissions,
+      quizzes: userQuizAttempts,
+      attendance: attendanceSummary,
+    });
+  } catch (error) {
+    console.error("Error fetching user activity logs:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -22,5 +22,8 @@ module.exports = (sequelize) => {
     rollNo: { type: DataTypes.STRING },
     facultyId: { type: DataTypes.STRING },
     hodId: { type: DataTypes.STRING },
+    isDefaultPassword: { type: DataTypes.BOOLEAN, defaultValue: true },
+    lastLogin: { type: DataTypes.DATE },
+    loginCount: { type: DataTypes.INTEGER, defaultValue: 0 },
   });
 };

@@ -12,7 +12,14 @@ import {
   Twitter, 
   Linkedin,
   Plus,
-  Loader
+  Loader,
+  Key,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { useAuth, type Role } from "@/lib/auth";
 import { type UserProfile, api } from "@/lib/api";
@@ -31,6 +38,16 @@ export function ProfilePage({ role }: { role: Role }) {
   const [newSkill, setNewSkill] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [socials, setSocials] = useState<Record<string, string>>({});
+
+  // Change Password State
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -78,6 +95,50 @@ export function ProfilePage({ role }: { role: Role }) {
     }
   };
 
+  // Password Strength Requirements
+  const passwordRequirements = [
+    { label: "At least 8 characters length", met: newPassword.length >= 8 },
+    { label: "At least 1 lowercase letter (a-z)", met: /[a-z]/.test(newPassword) },
+    { label: "At least 1 capital letter (A-Z)", met: /[A-Z]/.test(newPassword) },
+    { label: "At least 1 digit (0-9)", met: /\d/.test(newPassword) },
+    { label: "At least 1 special character (!@#$%^&*)", met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) },
+  ];
+
+  const isPasswordStrong = passwordRequirements.every((r) => r.met);
+  const isMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oldPassword) return toast.error("Current Password is required");
+    if (!newPassword) return toast.error("New Password is required");
+    if (!isPasswordStrong) {
+      return toast.error("New Password must satisfy all 5 complexity requirements (8+ chars, uppercase, lowercase, digit, and special char)");
+    }
+    if (newPassword !== confirmPassword) return toast.error("New Password and Confirm Password do not match");
+
+    try {
+      setIsChangingPassword(true);
+      const res = await api.changePassword(oldPassword, newPassword);
+
+      if (res.success) {
+        toast.success(res.message || "Your password has been changed successfully! A confirmation email has been sent.");
+        setIsChangePasswordOpen(false);
+        setOldPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        if (profile) {
+          setProfile({ ...profile, isDefaultPassword: false });
+        }
+      } else {
+        toast.error(res.error || "Failed to change password. Please verify current password.");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Error changing password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const addSkill = () => {
     if (newSkill && !skills.includes(newSkill)) {
       setSkills([...skills, newSkill]);
@@ -88,6 +149,19 @@ export function ProfilePage({ role }: { role: Role }) {
   const removeSkill = (skill: string) => {
     setSkills(skills.filter(s => s !== skill));
   };
+
+  // Profile Completion Percentage Breakdown (Total 100%)
+  const completionItems = [
+    { label: "Basic Info (Name & Email)", completed: !!(profile?.name && profile?.email), weight: 20 },
+    { label: "About Me / Bio", completed: !!(profile?.bio && profile.bio.trim().length > 0), weight: 20 },
+    { label: "Skills & Expertise", completed: !!(skills && skills.length > 0), weight: 20 },
+    { label: "GitHub Link", completed: !!(socials.github && socials.github.trim().length > 0), weight: 10 },
+    { label: "LinkedIn Link", completed: !!(socials.linkedin && socials.linkedin.trim().length > 0), weight: 10 },
+    { label: "Twitter Link", completed: !!(socials.twitter && socials.twitter.trim().length > 0), weight: 10 },
+    { label: "Website Link", completed: !!(socials.website && socials.website.trim().length > 0), weight: 10 },
+  ];
+
+  const completionPercentage = completionItems.reduce((acc, item) => acc + (item.completed ? item.weight : 0), 0);
 
   if (loading && !profile) {
     return (
@@ -104,9 +178,42 @@ export function ProfilePage({ role }: { role: Role }) {
         subtitle="Manage your identity and public presence."
         action={
           !isEditing ? (
-            <Btn onClick={() => setIsEditing(true)}>
-              <Edit3 className="h-4 w-4" /> Edit Profile
-            </Btn>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Compact Profile Completion Progress Widget */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2 shadow-xs">
+                <Sparkles className={`h-4 w-4 ${completionPercentage === 100 ? "text-emerald-500" : "text-primary"}`} />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Profile:</span>
+                  <span className={`text-xs font-extrabold ${completionPercentage === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
+                    {completionPercentage}%
+                  </span>
+                </div>
+                <div className="w-16 sm:w-20 bg-secondary rounded-full h-2 overflow-hidden border border-border/40 shrink-0">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      completionPercentage === 100
+                        ? "bg-emerald-500"
+                        : completionPercentage >= 50
+                        ? "bg-[#2563eb]"
+                        : "bg-amber-500"
+                    }`}
+                    style={{ width: `${completionPercentage}%` }}
+                  />
+                </div>
+              </div>
+
+              <Btn 
+                variant="outline"
+                onClick={() => setIsChangePasswordOpen(true)}
+                className="flex items-center gap-2 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-bold cursor-pointer"
+              >
+                <Key className="h-4 w-4" /> Change Password
+              </Btn>
+
+              <Btn onClick={() => setIsEditing(true)} className="cursor-pointer">
+                <Edit3 className="h-4 w-4" /> Edit Profile
+              </Btn>
+            </div>
           ) : (
             <div className="flex gap-2">
               <Btn variant="ghost" onClick={() => setIsEditing(false)}>
@@ -119,6 +226,34 @@ export function ProfilePage({ role }: { role: Role }) {
           )
         }
       />
+
+      {/* DEFAULT PASSWORD INITIAL WARNING BANNER */}
+      {profile?.isDefaultPassword && (
+        <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 p-4 mb-6 flex flex-wrap items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-white font-bold text-xl shrink-0 shadow-md">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200 font-display flex items-center gap-2">
+                Initial Default Password Security Warning
+              </h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                You are currently signed in with a default initial password. For security reasons, please update your password immediately.
+              </p>
+            </div>
+          </div>
+          <Btn
+            onClick={() => setIsChangePasswordOpen(true)}
+            className="bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold py-2.5 px-4 shadow-sm cursor-pointer shrink-0"
+          >
+            <Key className="h-4 w-4 mr-1.5" /> Change Password Now
+          </Btn>
+        </div>
+      )}
+
+
+
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Avatar & Basic Info */}
@@ -275,6 +410,175 @@ export function ProfilePage({ role }: { role: Role }) {
           </Card>
         </div>
       </div>
+
+      {/* CHANGE PASSWORD DIALOG MODAL */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                  <Key className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold font-display text-foreground">Change Account Password</h3>
+                  <p className="text-xs text-muted-foreground">Verify old password and enter your new password</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsChangePasswordOpen(false);
+                  setOldPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+                className="text-muted-foreground hover:text-foreground transition rounded-lg p-1 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              {/* Old Password */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Current Password *
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    type={showOldPassword ? "text" : "password"}
+                    placeholder="Enter current password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  New Password *
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="e.g. Anits@2026"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {/* Live Password Strength Requirements Checklist */}
+                {newPassword.length > 0 && (
+                  <div className="mt-2.5 p-3 rounded-xl border border-border bg-secondary/20 space-y-1.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Password Strength Requirements:
+                    </div>
+                    {passwordRequirements.map((req, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs">
+                        {req.met ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
+                        )}
+                        <span className={req.met ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground"}>
+                          {req.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                  Confirm New Password *
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Re-enter new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/40 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {/* Password Match Status */}
+                {confirmPassword.length > 0 && (
+                  <div className="mt-2.5">
+                    {isMatch ? (
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl animate-in fade-in duration-150">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Passwords Match Perfectly ✓</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl animate-in fade-in duration-150">
+                        <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+                        <span>Passwords Do Not Match ✗</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex gap-3 pt-2">
+                <Btn
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 cursor-pointer"
+                  onClick={() => {
+                    setIsChangePasswordOpen(false);
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                  disabled={isChangingPassword}
+                >
+                  Cancel
+                </Btn>
+                <Btn
+                  type="submit"
+                  className="flex-1 cursor-pointer bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isChangingPassword || !isPasswordStrong || !isMatch}
+                >
+                  {isChangingPassword ? <Loader className="h-4 w-4 animate-spin" /> : "Update Password ✓"}
+                </Btn>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+

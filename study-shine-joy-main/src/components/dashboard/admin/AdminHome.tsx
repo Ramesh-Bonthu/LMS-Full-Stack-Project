@@ -104,6 +104,8 @@ export function AdminHome() {
         const data = statsRes.data as AdminStats;
         const totalUCount = scopedUsers.length || data.totalUsers;
         const activeUCount = scopedUsers.filter((u: any) => u.active).length || data.activeUsers;
+        const quizCount = data.totalQuizzes ?? 0;
+        const quizAttempts = data.totalQuizAttempts ?? 0;
 
         setStats([
           { label: "Department Users", value: totalUCount, delta: `${activeUCount} active` },
@@ -113,11 +115,15 @@ export function AdminHome() {
             delta: "Active",
           },
           {
+            label: "Total Quizzes",
+            value: quizCount,
+            delta: `${quizAttempts} attempts`,
+          },
+          {
             label: "Total Assignments",
             value: data.totalAssignments,
             delta: `${data.totalSubmissions} submissions`,
           },
-          { label: "System Health", value: "98%", delta: "Stable" },
         ]);
       }
 

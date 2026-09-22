@@ -212,6 +212,7 @@ export interface AdminUser {
   status?: string;
   bio?: string;
   profilePicture?: string;
+  isDefaultPassword?: boolean;
   skills?: string[];
   socialLinks?: Record<string, string>;
 }
@@ -226,6 +227,74 @@ export interface AdminStats {
   activeUsers: number;
   approvedCourses: number;
   pendingApprovals: number;
+  totalQuizzes?: number;
+  totalQuizAttempts?: number;
+}
+
+export interface UserActivityLogsResponse {
+  success: boolean;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    branch: string;
+    year: string;
+    sem: string;
+    section: string;
+    phone?: string;
+    rollNo?: string;
+    facultyId?: string;
+    hodId?: string;
+    active: boolean;
+    isVerified: boolean;
+    isDefaultPassword: boolean;
+    bio?: string;
+    createdAt: string;
+    lastLogin?: string;
+    loginCount?: number;
+  };
+  stats: {
+    assignmentsTaken: number;
+    avgAssignmentMarks: number;
+    quizzesTaken: number;
+    avgQuizMarks: number;
+    attendancePercentage: number;
+  };
+  submissions: Array<{
+    id: number;
+    assignmentId: number;
+    assignmentTitle: string;
+    courseTitle: string;
+    marks: number;
+    maxMarks: number;
+    pctScore: number;
+    status: string;
+    submittedAt: string;
+    feedback?: string;
+  }>;
+  quizzes: Array<{
+    id: number;
+    quizId: number;
+    quizTitle: string;
+    courseTitle: string;
+    score: number;
+    totalQuestions: number;
+    pctScore: number;
+    completedAt: string;
+  }>;
+  attendance: {
+    totalSessions: number;
+    attendedSessions: number;
+    absentSessions: number;
+    attendancePercentage: number;
+    records: Array<{
+      id: number;
+      date: string;
+      status: string;
+      subject: string;
+    }>;
+  };
 }
 
 class ApiClient {
@@ -672,6 +741,35 @@ class ApiClient {
     });
   }
 
+  async sendUserOtp(data: { email: string; role?: string; name?: string }) {
+    return this.request<{ success: boolean; message?: string; email?: string }>("/admin/users/send-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verifyAndCreateUser(data: {
+    name: string;
+    email: string;
+    otp: string;
+    phone?: string;
+    branch?: string;
+    role: string;
+    password?: string;
+    year?: string;
+    sem?: string;
+    section?: string;
+    rollNo?: string;
+    facultyId?: string;
+    hodId?: string;
+  }) {
+    return this.request<{ success: boolean; message?: string; error?: string; user?: AdminUser }>("/admin/users/verify-and-create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+
   async approveUser(userId: string) {
     return this.request(`/admin/users/${userId}/approve`, { method: "POST" });
   }
@@ -728,6 +826,10 @@ class ApiClient {
     return this.request(`/admin/enrollment-trend${queryString}`, { method: "GET" });
   }
 
+  async getUserActivityLogs(userId: string | number) {
+    return this.request<UserActivityLogsResponse>(`/admin/users/${userId}/activity-logs`, { method: "GET" });
+  }
+
   // PROFILE ENDPOINTS
   async getUserProfile() {
     return this.request<UserProfile>("/users/profile", { method: "GET" });
@@ -737,6 +839,13 @@ class ApiClient {
     return this.request<{ message: string; user: UserProfile }>("/users/profile", {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    return this.request<{ success: boolean; message?: string; error?: string }>("/users/change-password", {
+      method: "POST",
+      body: JSON.stringify({ oldPassword, newPassword }),
     });
   }
 

@@ -50,15 +50,9 @@ export function Landing() {
         <div className="flex items-center gap-3">
           <Link
             to="/auth/login"
-            className="rounded-full border border-foreground px-5 py-2 text-sm font-medium transition hover:bg-foreground hover:text-background"
+            className="rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition hover:opacity-90 shadow-sm"
           >
             Sign in
-          </Link>
-          <Link
-            to="/auth/register"
-            className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition hover:opacity-90"
-          >
-            Sign up
           </Link>
         </div>
       </header>
