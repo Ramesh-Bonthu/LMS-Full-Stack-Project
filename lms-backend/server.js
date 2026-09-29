@@ -64,8 +64,8 @@ sequelize.sync({ alter: true }).then(async () => {
   console.error("Database connection failed", err);
 });
 
-app.listen(PORT, () => {
-  console.log(`LMS backend is running on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`LMS backend is running on http://0.0.0.0:${PORT} (Access via http://192.168.1.104:${PORT})`);
   console.log("Demo credentials:");
   console.log("  Admin: admin@example.com / password123");
   console.log("  Faculty: faculty@example.com / password123");

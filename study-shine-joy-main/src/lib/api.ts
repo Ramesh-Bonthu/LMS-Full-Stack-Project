@@ -1,5 +1,12 @@
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8082/api";
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && !envUrl.includes("localhost")) return envUrl;
+  if (typeof window !== "undefined" && window.location?.hostname) {
+    return `http://${window.location.hostname}:8082/api`;
+  }
+  return "http://localhost:8082/api";
+};
+const API_BASE_URL = getApiBaseUrl();
 
 export function formatRelativeTime(dateInput?: string | Date | number): string {
   if (!dateInput) return "Just now";

@@ -32,8 +32,6 @@ const navByRole: Record<Role, NavItem[]> = {
   student: [
     { to: "", label: "Home", icon: Home },
     { to: "courses", label: "Course Management", icon: BookOpen },
-    { to: "assignments", label: "Assignments", icon: ClipboardList },
-    { to: "quizzes", label: "Quizzes", icon: FileQuestion },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
     { to: "mock-interviews", label: "Mock Interviews", icon: Bot },
     { to: "library", label: "Library", icon: BookOpen },
@@ -43,10 +41,6 @@ const navByRole: Record<Role, NavItem[]> = {
   faculty: [
     { to: "", label: "Home", icon: Home },
     { to: "courses", label: "Course Management", icon: BookOpen },
-    { to: "assignments", label: "Assignments", icon: ClipboardList },
-    { to: "quizzes", label: "Quizzes", icon: FileQuestion },
-    { to: "attendance", label: "Attendance", icon: CalendarCheck },
-    { to: "announcements", label: "Announcements", icon: Megaphone },
     { to: "library", label: "Library", icon: BookOpen },
     { to: "notifications", label: "Notifications", icon: Bell },
     { to: "profile", label: "Profile", icon: User },
@@ -54,7 +48,6 @@ const navByRole: Record<Role, NavItem[]> = {
   admin: [
     { to: "", label: "Overview", icon: Home },
     { to: "users", label: "Users", icon: Users },
-    { to: "courses", label: "Course approvals", icon: ShieldCheck },
     { to: "announcements", label: "Announcements", icon: Megaphone },
     { to: "library", label: "Library", icon: BookOpen },
     { to: "reports", label: "Reports", icon: LineChart },
