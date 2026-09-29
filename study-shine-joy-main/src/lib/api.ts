@@ -299,6 +299,7 @@ export interface UserActivityLogsResponse {
 }
 
 class ApiClient {
+  private baseUrl: string;
   public API_BASE_URL: string;
 
   constructor(baseUrl: string) {

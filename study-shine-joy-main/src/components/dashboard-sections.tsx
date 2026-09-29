@@ -58,12 +58,11 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
     switch (section) {
       case "home": return <StudentHome />;
       case "courses": return <StudentCourses />;
-      case "assignments": return <StudentCourses />;
-      case "quizzes": return <StudentCourses />;
-      case "performance": return <StudentHome />;
+      case "assignments": return <StudentAssignments />;
+      case "quizzes": return <StudentQuizzes />;
+      case "performance": return <StudentPerformance />;
       case "attendance": return <StudentAttendance />;
       case "mock-interviews": return <MockInterviews />;
-
       default: return <StudentHome />;
     }
   }
@@ -72,14 +71,13 @@ export function DashboardSection({ role, section }: { role: Role; section: strin
   if (role === "faculty") {
     switch (section) {
       case "home": return <FacultyHome />;
-      case "courses":
-      case "assignments":
-      case "quizzes":
-      case "content":
-      case "attendance":
-      case "submissions":
-      case "announcements":
-        return <FacultyCourses />;
+      case "courses": return <FacultyCourses />;
+      case "assignments": return <FacultyAssignments />;
+      case "quizzes": return <FacultyQuizzes />;
+      case "content": return <FacultyContent />;
+      case "attendance": return <FacultyAttendance />;
+      case "submissions": return <FacultySubmissions />;
+      case "announcements": return <FacultyAnnouncements />;
       default: return <FacultyHome />;
     }
   }

@@ -32,6 +32,8 @@ const navByRole: Record<Role, NavItem[]> = {
   student: [
     { to: "", label: "Home", icon: Home },
     { to: "courses", label: "Course Management", icon: BookOpen },
+    { to: "assignments", label: "Assignments", icon: ClipboardList },
+    { to: "quizzes", label: "Quizzes", icon: FileQuestion },
     { to: "attendance", label: "Attendance", icon: CalendarCheck },
     { to: "mock-interviews", label: "Mock Interviews", icon: Bot },
     { to: "library", label: "Library", icon: BookOpen },
@@ -41,13 +43,18 @@ const navByRole: Record<Role, NavItem[]> = {
   faculty: [
     { to: "", label: "Home", icon: Home },
     { to: "courses", label: "Course Management", icon: BookOpen },
-    { to: "notifications", label: "Notifications", icon: Bell },
+    { to: "assignments", label: "Assignments", icon: ClipboardList },
+    { to: "quizzes", label: "Quizzes", icon: FileQuestion },
+    { to: "attendance", label: "Attendance", icon: CalendarCheck },
+    { to: "announcements", label: "Announcements", icon: Megaphone },
     { to: "library", label: "Library", icon: BookOpen },
+    { to: "notifications", label: "Notifications", icon: Bell },
     { to: "profile", label: "Profile", icon: User },
   ],
   admin: [
     { to: "", label: "Overview", icon: Home },
     { to: "users", label: "Users", icon: Users },
+    { to: "courses", label: "Course approvals", icon: ShieldCheck },
     { to: "announcements", label: "Announcements", icon: Megaphone },
     { to: "library", label: "Library", icon: BookOpen },
     { to: "reports", label: "Reports", icon: LineChart },
@@ -128,7 +135,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <>
       <nav className="flex-1 space-y-1.5">
         {items.map((item) => {
-          const active = currentSub === item.to;
+          const active = currentSub === item.to || (item.to === "" && currentSub === "home");
           return (
             <Link
               key={item.to || "home"}
